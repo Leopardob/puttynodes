@@ -1,0 +1,33 @@
+// examples script to use with mScriptDeformer
+//
+// a simple noise deformer
+//
+
+global proc float[] testField(string $field, int $count)
+{
+    // get node noise parameter
+    float $strength = `getAttr ($field+".strength")`;         
+        
+    // modify the sample points
+		float $force[] = mVecCreate($count, {0,$strength,0});
+    return $force;
+}
+
+
+	
+// function to add an attribute interface to the deformer node
+// these interface attributes will be used in the main deformation
+// function
+global proc int testField.interface(string $field)
+{
+		// set deformer parameter
+		// setAttr ($deformerName+". 
+		
+		// add attributes
+    addAttr -longName strength -defaultValue 1.0 -minValue -10 -maxValue 50 $field;
+
+   	     
+    return true;
+}
+
+

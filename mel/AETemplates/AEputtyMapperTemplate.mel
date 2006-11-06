@@ -1,0 +1,281 @@
+
+
+
+global proc AEputtyMapperTemplate(string $nodeName )
+{
+	editorTemplate -beginScrollLayout;
+	
+	editorTemplate -beginLayout "Putty Particle Attribute Mapper Settings" -collapse 0 ;
+	
+		AEpScriptControl "script";
+		AEpScriptMelFunctionControl "cmdBaseName";
+		AEpScriptSourceControl "source" ;
+			
+	editorTemplate -endLayout;
+	
+	editorTemplate -addExtraControls -extraControlsLabel "Script Attributes";
+
+	AEdependNodeTemplate $nodeName;
+
+	editorTemplate -endScrollLayout;
+    
+    editorTemplate -suppress "uCoordPP";
+    editorTemplate -suppress "vCoordPP";    
+    editorTemplate -suppress "minValue";    
+    editorTemplate -suppress "maxValue";        		
+    editorTemplate -suppress "particleCount";        		    
+    editorTemplate -suppress "computeNode";        		        
+}
+
+//  ========== AEgenericCreatePuttyMapper ==========
+//
+//  Description
+//		Create a putty mapper node and make the
+//		necessary connections to the particle shape.
+//
+global proc  AEgenericCreatePuttyMapper( string $node, string $attr, string $rowLyt )
+{
+	if( !`pluginInfo -q -l puttyNodes` )
+    	error ("puttyMapper: required plugin 'puttyNodes' not loaded!");
+
+	string $particleAttrMapper = `createNode -n ("puttyMapper_"+$attr) puttyMapper`;
+
+	connectAttr ($node+".count") ($particleAttrMapper+".particleCount");
+	
+    // find out the type of the attribute and connect the appropriate
+    // output to it   
+	string $type = `getAttr -type ($node+"."+$attr)`;
+    if ($type == "doubleArray")
+		connectAttr -f ($particleAttrMapper+".outValuePP") ($node+"."+$attr);
+    else if ($type == "vectorArray")
+		connectAttr -f ($particleAttrMapper+".outColorPP") ($node+"."+$attr);    
+	else
+    	error ("puttyMapper: unknown attribute type '"+$type+"' to map to '"+$node+"."+$attr+"'!");
+	
+	select $particleAttrMapper;
+    
+	AEgenericUpdateOneTextfield( $node, $attr, $rowLyt );
+}  
+
+//  overridden from mayas' AEgenericPerParticle.mel
+//
+//  ========== AEgenericAttrPopupMenu ==========
+//
+//  Description:
+//		Build the popup menu for generic array attributes.
+//		The current state of the attribute determines what
+//		items are added to the menu. If the attribute is
+//		connected, then navigation items are added. If
+//		the attribute has an expression, then just the
+//		expression editor is available. If the attribute
+//		is not connected, then the default buttons are added.
+//
+
+global proc  AEgenericAttrPopupMenu( string $parent, string $nodeName, string $attrName, string $attrType, string $rowLyt )
+{
+	string	$cnctAry[];
+	int		$cnctCnt;
+	string	$words[];
+	string	$amNode;
+	int		$deleteBtnOkay = 0;
+
+
+	// Delete the old buttons.
+	//
+	popupMenu -e -deleteAllItems $parent;
+	setParent -menu $parent;
+
+	// Save this value for later use...
+	//
+	string $breakConnection = (uiRes("m_AEgenericPerParticle.kBreakConnection")) ;
+
+	// Check for upstream connections.
+	//
+	$cnctAry = `listConnections -s true -d false -p true ($nodeName+"."+$attrName)`;
+
+	if (size( $cnctAry ))
+	{
+		tokenize( $cnctAry[0], ".", $words );
+
+		if (AEgenericIsExpression( $cnctAry[0] ))
+		{
+			menuItem
+				-label (uiRes("m_AEgenericPerParticle.kCreationExpression")) 
+				-c ("expressionEditor creation "+$nodeName+" "+$attrName);
+
+			menuItem
+				-label (uiRes("m_AEgenericPerParticle.kRuntimeBeforeDynamicsExpression")) 
+				-c ("expressionEditor runtimeBeforeDynamics "+$nodeName+" "+$attrName);
+
+			menuItem
+				-label (uiRes("m_AEgenericPerParticle.kRuntimeAfterDynamicsExpression")) 
+				-c ("expressionEditor runtimeAfterDynamics "+$nodeName+" "+$attrName);
+		}
+		else if (AEgenericIsArrayMapper( $cnctAry[0] ))
+		{
+			$amNode = $words[0];
+
+			menuItem
+				-l ("<- "+$cnctAry[0])
+				-subMenu true;
+
+			string	$ramp[] = `listConnections -s true -d false ($amNode+".computeNode")`;
+
+			if (size( $ramp ) == 1)
+			{
+				menuItem
+					-l ("Edit Ramp")
+					-c ("showEditor "+$ramp[0]);
+			}
+
+			menuItem
+				-l ("Edit Array Mapper")
+				-c ("showEditor "+$amNode);
+
+			AEcreateConnectAttr( $nodeName, $attrName, $amNode, "uCoordPP" );
+			AEcreateConnectAttr( $nodeName, $attrName, $amNode, "vCoordPP" );
+
+			menuItem
+				-label $breakConnection
+				-c ("AEgenericBreakAllConnections "+$nodeName+" "+$amNode );
+
+			menuItem
+				-l ("Delete Array Mapper")
+				-c ("AEgenericDeleteMapper "+$nodeName+" "+$amNode+" "+$rowLyt);
+
+			setParent -menu ..;
+		}
+		else
+		{
+			menuItem
+				-l ("<- "+$cnctAry[0])
+				-subMenu true;
+
+			menuItem
+				-l ("Edit "+$words[0])
+				-c ("showEditor "+$words[0]);
+
+			menuItem
+				-label $breakConnection
+				-c ("AEgenericBreakConnection "+$nodeName+" "+$cnctAry[0]+" "+$nodeName+"."+$attrName);
+
+			setParent -menu ..;
+		}
+	}
+
+
+	// When there are no upstream connections, add the default buttons
+	// regardless if there are any downstream connections.
+	//
+	else
+	{
+		// Do not allow expressions or component editor on the following:
+		// rampPosition, rampVelocity, rampAcceleration.
+		//
+		int $isNotRampAttr = 0;
+		if  ( ($attrName != "rampPosition") &&
+			 ($attrName != "rampVelocity") &&
+			 ($attrName != "rampAcceleration") )
+			$isNotRampAttr = 1;
+
+		if ($isNotRampAttr)
+		{
+			menuItem
+				-label (uiRes("m_AEgenericPerParticle.kCreationExpression2")) 
+				-c ("expressionEditor creation "+$nodeName+" "+$attrName);
+
+			menuItem
+				-label (uiRes("m_AEgenericPerParticle.kRuntimeExpressionBeforeDynamics")) 
+				-c ("expressionEditor runtimeBeforeDynamics "+$nodeName+" "+$attrName);
+
+			menuItem
+				-label (uiRes("m_AEgenericPerParticle.kRuntimeExpressionAfterDynamics")) 
+				-c ("expressionEditor runtimeAfterDynamics "+$nodeName+" "+$attrName);
+		}
+
+		// Do not allow ramp on the following attributes:
+		// lifespanPP, position, velocity, acceleration.
+		// Not possible to ramp these attributes.
+		//
+		int $isRampable = 1;
+
+		if ( ($attrName != "lifespanPP") &&
+			 ($attrName != "position") &&
+			 ($attrName != "velocity") &&
+			 ($attrName != "acceleration") )
+		{
+			menuItem 
+				-label (uiRes("m_AEgenericPerParticle.kCreateRamp")) 
+				-c ("AEgenericCreateRamp "+$nodeName+" "+$attrName+" "+$rowLyt);              
+			menuItem 
+				-optionBox true
+				-c ("ArrayMapperWnd "+$nodeName+" "+$attrName+" "+$rowLyt);
+			menuItem 
+				-label ("Create puttyMapper") 
+				-c ("AEgenericCreatePuttyMapper "+$nodeName+" "+$attrName+" "+$rowLyt);
+                
+		}
+
+		// Also do not allow component editor on
+		// the ramp-specific attributes
+		//
+		if ($isNotRampAttr)
+		{
+			menuItem
+				-label (uiRes("m_AEgenericPerParticle.kComponentEditor")) 
+				-c "componentEditorWindow";
+		}
+
+		$deleteBtnOkay = 1;
+
+		// Do not allow deleting lifespanPP (v 3.0 and after)
+		//
+		if ($attrName == "lifespanPP")
+			$deleteBtnOkay = 0;
+	}
+
+
+	// Add the standard navigation and disconnect buttons for all
+	// of the downstream connections.
+	//
+	$cnctAry = `listConnections -s false -d true -p true ($nodeName+"."+$attrName)`;
+	$cnctCnt = size( $cnctAry );
+
+	if (size( $cnctAry ))
+	{
+		menuItem -divider true;
+
+		for ($i = 0; $i < $cnctCnt; $i++)
+		{
+			tokenize( $cnctAry[$i], ".", $words );
+
+			menuItem
+				-l ("-> "+$cnctAry[$i])
+				-subMenu true;
+
+			menuItem
+				-l ("Edit "+$words[0])
+				-c ("showEditor "+$words[0]);
+
+			menuItem
+				-label $breakConnection
+				-c ("AEgenericBreakConnection "+$nodeName+" "+$nodeName+"."+$attrName+" "+$cnctAry[$i]);
+
+			setParent -menu ..;
+		}
+	}
+	else
+	{
+		if ($deleteBtnOkay)
+		{
+			if (AEokayAttr( $nodeName, $attrName ))
+			{
+				menuItem
+					-label (uiRes("m_AEgenericPerParticle.kDeleteAttribute")) 
+					-c ("AEgenericDeleteAttr "+$nodeName+" "+$attrName);
+			}
+		}
+	}
+
+
+}  // AEgenericAttrPopupMenu //

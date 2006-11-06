@@ -1,0 +1,25 @@
+global proc string puttyMapperCreate(string $particle )
+{
+	if( !`pluginInfo -q -l puttyNodes` )
+    	error ("puttyMapper: required plugin 'puttyNodes' not loaded!");
+
+	string $particleAttrMapper = `createNode puttyMapper`;
+
+	//	use the particle attribute mapper to position particles at the 
+	connectAttr ($particle+".count") ($particleAttrMapper+".particleCount");
+    return $particleAttrMapper;
+}
+
+global proc string puttyMapper( )
+{
+	// check if a particle system is selected
+    string $sl[] = `ls -sl -dag -ni -type "particle"`;
+    if (!size($sl))
+    	error ("puttyMapper: nothing selected, select a particle system to add the mapper to!");
+
+	if (size($sl)>1)
+		error ("puttyMapper: please select only one particle system at a time!");        
+        
+	return puttyMapperCreate($sl[0]);
+    
+}

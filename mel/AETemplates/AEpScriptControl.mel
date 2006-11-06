@@ -1,0 +1,55 @@
+// make a unique name based on node type
+proc string ctrlName(string $attr, string $ctrl)
+{
+	string $e[];
+	tokenize $attr "." $e;
+	string $nt= `nodeType $e[0]`;
+	return ("msc"+$nt+$ctrl);	
+}
+
+global proc AEpScriptControlButtonBrowseCallback(string $attr, string $filePath, string $fileValue)
+{
+		setAttr $attr -type "string" $filePath;
+        
+        // hide the file browser window
+        window -e -vis false projectViewerWindow;	
+}
+
+
+global proc AEpScriptControlButtonCmd(string $attr)
+{
+    // call a file browser to choose a mel script
+	// 
+	if(fileBrowser ( ("AEpScriptControlButtonBrowseCallback "+$attr), "Load Script", "*.mel",0))
+    {
+
+    }
+}
+
+global proc AEpScriptControlNew(string $attr)
+{
+		string $name = ctrlName($attr, "Field");
+		
+		textFieldButtonGrp 
+			-label "Script" 
+			-buttonLabel "..." 
+			-ann "Path to script used during node computation, use button to browse for file"
+			$name;
+		
+	AEpScriptControlReplace($attr);
+}
+
+global proc AEpScriptControlReplace(string $attr)
+{
+		string $name = ctrlName($attr, "Field");
+				
+		connectControl -index 2 $name $attr;
+		textFieldButtonGrp -e -bc ("AEpScriptControlButtonCmd "+ $attr) $name;		
+}
+
+
+global proc AEpScriptControl(string $attr)
+{
+		editorTemplate -callCustom  "AEpScriptControlNew" "AEpScriptControlReplace" $attr ;
+		editorTemplate -suppress $attr;
+}
