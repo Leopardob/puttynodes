@@ -1,0 +1,36 @@
+// make a unique name based on node type
+proc string buttonName(string $attr)
+{
+	string $e[];
+	tokenize $attr "." $e;
+	string $nt= `nodeType $e[0]`;
+	return ("mssc"+$nt+"Button");	
+}
+
+global proc AEpScriptSourceControlNew(string $attr)
+{
+		string $name = buttonName($attr);
+		rowLayout -numberOfColumns 3 
+ 			-columnWidth3 145 50 120
+ 			-adjustableColumn 2;
+ 			
+ 			text -label "";
+			button -label "Source Script" 
+				-ann "Source the script and rebuild the interface (if present)"
+				-c ("setAttr "+$attr+" 1") $name;
+		
+		setParent..;
+}
+
+global proc AEpScriptSourceControlReplace(string $attr)
+{
+		string $name = buttonName($attr);
+		button -e  -c ("setAttr "+$attr+" 1") $name;
+}
+
+
+global proc AEpScriptSourceControl(string $attr)
+{
+		editorTemplate -callCustom  "AEpScriptSourceControlNew" "AEpScriptSourceControlReplace" $attr ;
+		editorTemplate -suppress $attr;
+}

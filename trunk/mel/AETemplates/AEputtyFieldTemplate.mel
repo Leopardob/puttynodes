@@ -1,0 +1,36 @@
+
+
+
+global proc AEputtyFieldTemplate(string $nodeName )
+{
+	editorTemplate -beginScrollLayout;
+	
+	editorTemplate -beginLayout "Putty Field Settings" -collapse 0 ;
+	
+		AEpScriptControl "script";
+		AEpScriptMelFunctionControl "cmdBaseName";
+		AEpScriptSourceControl "source" ;
+		
+		editorTemplate -addSeparator;
+	
+	editorTemplate -endLayout;
+	
+	editorTemplate -beginLayout "Script Attributes" -collapse 0;
+	
+//		editorTemplate -addControl "magnitude";
+		
+		editorTemplate -addSeparator;
+		editorTemplate -addExtraControls -extraControlsLabel "Script Attributes";
+
+		// surpress these
+
+		editorTemplate -suppress "map64BitIndices";	
+			
+
+	editorTemplate -endLayout;
+
+	AEdependNodeTemplate $nodeName;
+
+	editorTemplate -endScrollLayout;
+		
+}
