@@ -19,6 +19,7 @@ mayaplugin_cppsrcs = [  'src/plugin.cpp',
                         'src/puttyDeformerNode.cpp',  
                         'src/puttyFieldNode.cpp',                          
                         'src/puttyParticleAttributeMapperNode.cpp',                                                  
+                        'src/puttyMeshInstancerNode.cpp',
                         ]
 
 # libs

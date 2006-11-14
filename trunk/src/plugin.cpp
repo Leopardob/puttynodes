@@ -7,14 +7,15 @@
 #include "../include/puttyDeformerNode.h"
 #include "../include/puttyFieldNode.h"
 #include "../include/puttyParticleAttributeMapperNode.h"
+#include "../include/puttyMeshInstancerNode.h"
 
 
 MStatus initializePlugin( MObject obj )
 { 
 	MStatus   status;
-	MFnPlugin plugin( obj, "Carsten Kolve", "6.5", "Any");
+	MFnPlugin plugin( obj, "Carsten Kolve", "0.1", "Any");
 	MGlobal::displayInfo("----------------------------------------------------------------------");
-	MGlobal::displayInfo("puttyNodes 0.1                               (c) Carsten Kolve, 2006");
+	MGlobal::displayInfo("puttyNodes 0.1 (c) Carsten Kolve, 2006");
 	MGlobal::displayInfo("Free for educational and private use. Charity ware for commercial use!");
 	MGlobal::displayInfo("Visit www.kolve.com for news, updates and information on the licenses!");
 	MGlobal::displayInfo("-----------------------------------------------------------------------");
@@ -29,6 +30,9 @@ MStatus initializePlugin( MObject obj )
         
 	status = plugin.registerNode( "puttyMapper", puttyParticleAttributeMapper::id, &puttyParticleAttributeMapper::creator, &puttyParticleAttributeMapper::initialize,MPxNode::kParticleAttributeMapperNode );
     SYS_ERROR_CHECK(status, "registering  node 'puttyMapper' failed!");
+
+	status = plugin.registerNode( "puttyMeshInstancer", puttyMeshInstancer::id, &puttyMeshInstancer::creator, &puttyMeshInstancer::initialize,MPxNode::kLocatorNode );
+    SYS_ERROR_CHECK(status, "registering  node 'puttyMeshInstancer' failed!");
 
 	return status;
 }
@@ -48,6 +52,10 @@ MStatus uninitializePlugin( MObject obj )
 
     status = plugin.deregisterNode( puttyParticleAttributeMapper::id );
     SYS_ERROR_CHECK(status, "deregistering  node 'puttyParticleAttributeMapper' failed!");
+
+    status = plugin.deregisterNode( puttyMeshInstancer::id );
+    SYS_ERROR_CHECK(status, "deregistering  node 'puttyMeshInstancer' failed!");
+
 
 	return status;
 }
