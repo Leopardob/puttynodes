@@ -18,7 +18,7 @@ mayaplugin_cpppath = [ '#/include', os.path.join( maya_location, 'include' ), '/
 mayaplugin_cppsrcs = [  'src/plugin.cpp', 
                         'src/puttyDeformerNode.cpp',  
                         'src/puttyFieldNode.cpp',                          
-                        'src/puttyParticleAttributeMapperNode.cpp',                                                  
+                        'src/puttyMapperNode.cpp',                                                  
                         'src/puttyMeshInstancerNode.cpp',
                         ]
 

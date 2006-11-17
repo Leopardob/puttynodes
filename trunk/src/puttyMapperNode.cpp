@@ -1,3 +1,15 @@
+/* COPYRIGHT --
+ *
+ * This file is part of puttyNodes, a collection of utility nodes for Autodesk Maya.
+ * puttyNodes is (c) 2006 Carsten Kolve <carsten@kolve.com>
+ * and distributed under the terms of the GNU GPL V2.
+ * This contribution to puttyNodes is (c) Rising Sun Pictures PTY Ltd, www.rsp.com.au 
+ * See the ./License-GPL.txt file in the source tree root for more information.
+ *
+ * THIS PACKAGE IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+ * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES
+ * OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+ */
 
 // maya includes
 #include <maya/MFnNumericAttribute.h>
@@ -24,39 +36,39 @@
 #include "../include/helperMacros.h"
 
 #include "../include/puttyNodeIds.h"
-#include "../include/puttyParticleAttributeMapperNode.h"
+#include "../include/puttyMapperNode.h"
 
 
 
 
 /*************************************************************/
 
-MTypeId puttyParticleAttributeMapper::id( PUTTYPARTICLEATTRIBUTEMAPPER_NODE_ID );
+MTypeId puttyMapper::id( PUTTYMAPPER_NODE_ID );
 
      
-MObject puttyParticleAttributeMapper::aScript;   // the script to source
-MObject puttyParticleAttributeMapper::aCmdBaseName;  // the base name of the command to execute
-MObject puttyParticleAttributeMapper::aSource;           
-MObject puttyParticleAttributeMapper::aNodeReady; 
-MObject puttyParticleAttributeMapper::aScriptSourced;
+MObject puttyMapper::aScript;   // the script to source
+MObject puttyMapper::aCmdBaseName;  // the base name of the command to execute
+MObject puttyMapper::aSource;           
+MObject puttyMapper::aNodeReady; 
+MObject puttyMapper::aScriptSourced;
 
 
-MObject puttyParticleAttributeMapper::aParticleCount; // current object 
+MObject puttyMapper::aParticleCount; // current object 
 
 
-puttyParticleAttributeMapper:: puttyParticleAttributeMapper() {}
-puttyParticleAttributeMapper::~puttyParticleAttributeMapper() {}
+puttyMapper:: puttyMapper() {}
+puttyMapper::~puttyMapper() {}
 
 /*************************************************************************************/
-void* puttyParticleAttributeMapper::creator() 
+void* puttyMapper::creator() 
 { 
-	return new puttyParticleAttributeMapper(); 
+	return new puttyMapper(); 
 }
 
 /*************************************************************************************/
 // function to mark the output dirty once one of the dynamic attributes changes
 /*
-MStatus puttyParticleAttributeMapper::setDependentsDirty( const MPlug &plugBeingDirtied, MPlugArray &affectedPlugs )
+MStatus puttyMapper::setDependentsDirty( const MPlug &plugBeingDirtied, MPlugArray &affectedPlugs )
 {
 	if ( plugBeingDirtied.isDynamic()) 
     {
@@ -80,7 +92,7 @@ MStatus puttyParticleAttributeMapper::setDependentsDirty( const MPlug &plugBeing
 }
 */
 /*************************************************************************************/
-MStatus puttyParticleAttributeMapper::initialize()
+MStatus puttyMapper::initialize()
 {
 	MStatus status;
 	MFnNumericAttribute		nAttr;
@@ -148,7 +160,7 @@ MStatus puttyParticleAttributeMapper::initialize()
 //
 //	
 //
-MStatus	puttyParticleAttributeMapper::computeScriptSourced( const MPlug& plug, MDataBlock& block )
+MStatus	puttyMapper::computeScriptSourced( const MPlug& plug, MDataBlock& block )
 {
 	MStatus status;
   
@@ -192,7 +204,7 @@ MStatus	puttyParticleAttributeMapper::computeScriptSourced( const MPlug& plug, M
 /*************************************************************************************/
 /*************************************************************************************/
 
-MStatus	puttyParticleAttributeMapper::computeNodeReady( const MPlug& plug, MDataBlock& block )
+MStatus	puttyMapper::computeNodeReady( const MPlug& plug, MDataBlock& block )
 {
 	MStatus status;
 	bool result =false;
@@ -263,7 +275,7 @@ MStatus	puttyParticleAttributeMapper::computeNodeReady( const MPlug& plug, MData
 /*************************************************************************************/
 /*************************************************************************************/
 
-MStatus puttyParticleAttributeMapper::compute(const MPlug& plug, MDataBlock& block)
+MStatus puttyMapper::compute(const MPlug& plug, MDataBlock& block)
 {
 	MStatus status;
 
