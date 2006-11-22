@@ -10,7 +10,12 @@ version = "0.1.0"
 maya_location = os.getenv('MAYA_LOCATION')
 if maya_location == None:
 	vfx.build.errormsg( "The Maya environment not set!")
-	
+
+maya_version =	os.getenv('MAYA_VERSION')
+if maya_version == None:
+	vfx.build.errormsg( "The Maya environment not set!")
+    
+    
 	
 # includes/srcs
 mayaplugin_cpppath = [ '#/include', os.path.join( maya_location, 'include' ), '/usr/X11R6/include' ]
@@ -18,9 +23,13 @@ mayaplugin_cpppath = [ '#/include', os.path.join( maya_location, 'include' ), '/
 mayaplugin_cppsrcs = [  'src/plugin.cpp', 
                         'src/puttyDeformerNode.cpp',  
                         'src/puttyFieldNode.cpp',                          
-                        'src/puttyMapperNode.cpp',                                                  
                         'src/puttyMeshInstancerNode.cpp',
+                        'src/puttyGlyphNode.cpp',                        
                         ]
+
+# maya 8 exclusive stuff
+if maya_version == "8.0":
+	mayaplugin_cppsrcs.append('src/puttyMapperNode.cpp')
 
 # libs
 mayaplugin_libpath = [ os.path.join( maya_location, 'lib' ) ]

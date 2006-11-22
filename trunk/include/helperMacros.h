@@ -28,5 +28,13 @@
 		return MS::kFailure;		\
 	}
 
+#define checkError(status,msg)\
+	if ( status != MStatus::kSuccess ) \
+    {\
+		MString fullMsg = status.errorString() + " -> " + msg;\
+		printMsg( fullMsg.asChar() );\
+        return status; \
+	}
+
 
 #endif

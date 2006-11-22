@@ -17,10 +17,15 @@
 
 // the node id's all here for easy modification convinience
 #define PUTTYDEFORMER_NODE_ID 				  0x00108E01
+
 #define PUTTYFIELD_NODE_ID    				  0x00108E02
-#define PUTTYEMITTER_NODE_ID  				  0x00108E03
+
+#define PUTTYGLYPH_NODE_ID  				  0x00108E03
+
 #define PUTTYNODE_NODE_ID     				  0x00108E04
+
 #define PUTTYMAPPER_NODE_ID 				  0x00108E05
+
 #define PUTTYMESHINSTANCER_NODE_ID  		  0x00108E06
 
 
