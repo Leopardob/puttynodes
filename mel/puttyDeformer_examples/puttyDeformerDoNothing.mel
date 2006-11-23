@@ -1,0 +1,28 @@
+
+/****************************************************************/
+// template do nothing functions to be used as a standin until something
+// better comes along
+
+global proc float[] puttyDeformerDoNothing(string $deformerName, int $count)
+{
+    // get all values of node
+    float $vPosition[] = `getAttr ($deformerName+".currentPosition")`; 
+    
+    // print them
+    print ("\nputtyDeformer: "+$deformerName+" doing nothing! Please replace the script!");
+    
+    // return undeformed positions
+    return $vPosition;
+}
+
+/****************************************************************/
+
+global proc int puttyDeformerDoNothing.interface(string $deformerName)
+{
+    // not much doing here, are we?
+   print ("\nputtyDeformerInterface: "+$deformerName+" doing nothing! Please replace the script!");
+   return true;
+}
+
+/****************************************************************/
+
