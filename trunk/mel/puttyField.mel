@@ -1,0 +1,31 @@
+// mel script to create a puttyField
+
+global proc string puttyField()
+{
+    // check if plugin loaded
+    int $s = `pluginInfo -q -loaded puttyNodes`;
+    
+    if (!$s)
+    {
+        loadPlugin puttyNodes;
+    }
+    
+    // check selection
+    string $sl[] = `ls -sl -dag -ni -type "particle"`;
+    if (!size($sl))
+        error("puttyField: no particle system selected - select at least one particle system to apply the field to!");
+        
+	// create the field
+    string $f = `createNode puttyField -n "puttyField#"`;
+    
+    string $particle;
+    for ($particle in $sl)
+	   	connectDynamic -f $f $particle;
+    
+	// add the below default script (hopefully this is in the script path)
+	setAttr -type "string" ($f + ".script") "puttyFieldDoNothing";
+    
+    select $f;
+    return $f;
+} 
+

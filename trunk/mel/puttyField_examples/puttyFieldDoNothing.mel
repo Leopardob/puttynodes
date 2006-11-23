@@ -1,0 +1,34 @@
+
+/****************************************************************/
+// template do nothing functions to be used as a standin until something
+// better comes along
+
+global proc float[] puttyFieldDoNothing(string $fieldName, int $count)
+{
+    // get all values of node
+    float $vVelocity[] = `getAttr ($fieldName+".currentVelocity")`; 
+    
+    // print them
+    print ("\nputtyFieldDoNothing: "+$fieldName+" doing nothing! Please replace this script!");
+    
+    // return empty force
+    float $vForce[];
+    int $i;
+
+    for ($i=0;$i<size($vVelocity);$i++)
+    	$vForce[$i] = 0.0;
+        
+    return $vVelocity;
+}
+
+/****************************************************************/
+
+global proc int puttyFieldDoNothing.interface(string $FieldName)
+{
+    // not much doing here, are we?
+   print ("\nputtyFieldDoNothing.interface: "+$FieldName+" doing nothing! Please replace this script!");
+   return true;
+}
+
+/****************************************************************/
+

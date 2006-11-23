@@ -25,7 +25,7 @@ global proc float[] sinDeformer(string $deformerName, int $count)
     
     // now get a noise array
     int $size = mVecSize($vSamplePosition);
-    float $dSin[] = mDblSin(mVecGetX(vSamplePosition));
+    float $dSin[] = mDblSin(mVecGetX($vSamplePosition));
     $dSin = mDblAbs($dSin);
     
     

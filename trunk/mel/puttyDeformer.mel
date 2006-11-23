@@ -1,0 +1,30 @@
+// mel script to create a puttyDeformer
+
+global proc string[] puttyDeformer()
+{
+    // check if plugin loaded
+    int $s = `pluginInfo -q -loaded puttyNodes`;
+    
+    if (!$s)
+    {
+        loadPlugin puttyNodes;
+    }
+    
+    // check selection
+    string $sl[] = `ls -sl`;
+    if (!size($sl))
+        error("puttyDeformer: nothing selected - select at least one deformable object!");
+        
+    // make paintable
+    makePaintable -attrType "multiFloat" -sm "deformer" "weightGeometryFilter" "weights" ;
+    
+    // apply the deformer
+    string $def[] = `deformer -type "puttyDeformer"`;
+
+	// add the below default script (hopefully this is in the script path)
+	setAttr -type "string" ($def[0] + ".script") "puttyDeformerDoNothing";
+    
+    select $def[0];
+    return $def;
+} 
+
