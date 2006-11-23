@@ -1,0 +1,19 @@
+
+
+global proc AEputtyGlyphTemplate(string $nodeName )
+{
+	editorTemplate -beginScrollLayout;
+	
+		editorTemplate -beginLayout "Putty Glyph Settings" -collapse 0 ;
+
+			editorTemplate -addControl "glyphType";
+
+		editorTemplate -endLayout;
+	
+		editorTemplate -addExtraControls -extraControlsLabel "Script Attributes";
+
+		AEdependNodeTemplate $nodeName;
+
+	editorTemplate -endScrollLayout;
+}
+

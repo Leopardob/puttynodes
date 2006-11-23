@@ -1,0 +1,42 @@
+
+
+
+global proc AEputtyDeformerTemplate(string $nodeName )
+{
+	editorTemplate -beginScrollLayout;
+	
+	editorTemplate -beginLayout "Putty Deformer Settings" -collapse 0 ;
+	
+		AEpScriptControl "script";
+		AEpScriptMelFunctionControl "cmdBaseName";
+		AEpScriptSourceControl "source" ;
+		
+		editorTemplate -addSeparator;
+		editorTemplate -addControl "deformerSpace";
+		editorTemplate -addControl "deformerEnvelope";
+		editorTemplate -addControl "deformerWeights";
+	
+	editorTemplate -endLayout;
+	
+	editorTemplate -beginLayout "Deformer Attributes" -collapse 0;
+	
+		editorTemplate -addControl "envelope";
+		
+		editorTemplate -addSeparator;
+		editorTemplate -addExtraControls -extraControlsLabel "Script Attributes";
+
+		// surpress these
+
+		editorTemplate -suppress "input";
+		editorTemplate -suppress "weightList";
+		editorTemplate -suppress "nodeReady";
+		editorTemplate -suppress "map64BitIndices";	
+			
+
+	editorTemplate -endLayout;
+
+	AEdependNodeTemplate $nodeName;
+
+	editorTemplate -endScrollLayout;
+		
+}

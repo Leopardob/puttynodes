@@ -1,0 +1,63 @@
+// examples script to use with mScriptDeformer
+//
+// a simple noise deformer
+//
+
+global proc float[] sinDeformer(string $deformerName, int $count)
+{
+    // get all positions
+    float $vPosition[] = `getAttr ($deformerName+".currentPosition")`; 
+    float $vSamplePosition[] = $vPosition;
+    
+    // get node noise parameter
+    float $frequency = `getAttr ($deformerName+".frequency")`;         
+    float $amplitude = `getAttr ($deformerName+".amplitude")`; 
+    float $offset = `getAttr ($deformerName+".offset")`;     
+    float $noiseScale = `getAttr ($deformerName+".noiseScale")`;         
+    float $noiseOffset = `getAttr ($deformerName+".noiseOffset")`;             
+    
+    
+ //   float $vDirection[] = `getAttr ($deformerName+".displaceDirection")`; 
+        
+    // modify the sample points
+    $vSamplePosition = mVecAdd($vSamplePosition, {$offset,0,0} );
+    $vSamplePosition = mVecDblMult($vSamplePosition, $frequency);
+    
+    // now get a noise array
+    int $size = mVecSize($vSamplePosition);
+    float $dSin[] = mDblSin(mVecGetX($vSamplePosition));
+    $dSin = mDblAbs($dSin);
+    
+    
+    // build a displacement vector
+    $dSin = mDblMult($dSin,$amplitude);
+    float $vDisplacement[] = mVecSetLength({0,1,0},$dSin);
+    
+    // apply displacement
+    $vPosition = mVecAdd($vPosition, $vDisplacement);
+    
+    // return deformed positions
+    return $vPosition;
+}
+
+	
+// function to add an attribute interface to the deformer node
+// these interface attributes will be used in the main deformation
+// function
+global proc int sinDeformer.interface(string $deformerName)
+{
+		// set deformer parameter
+		// setAttr ($deformerName+". 
+		
+		// add attributes
+    addAttr -longName frequency -defaultValue 1.0 -minValue -10 -maxValue 10 $deformerName;
+    addAttr -longName amplitude -defaultValue 1.0 -minValue -10 -maxValue 10 $deformerName;
+    addAttr -longName offset    -defaultValue 0.0 -minValue -10 -maxValue 10 $deformerName;
+    addAttr -longName noiseScale    -defaultValue 0.0 -minValue -10 -maxValue 10 $deformerName;    
+    addAttr -longName noiseOffset    -defaultValue 1 -minValue -10 -maxValue 20 $deformerName;        
+//		addVecAttr("displaceDirection",$deformerName);
+   	     
+    return true;
+}
+
+

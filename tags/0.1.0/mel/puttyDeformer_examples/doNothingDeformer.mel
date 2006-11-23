@@ -1,0 +1,45 @@
+// examples script to use with mScriptDeformer
+//
+// a deformer that does nothing but print the various values provided
+// on each computation, good for debugging or as a template
+
+global proc float[] doNothingDeformer(string $deformerName, int $count)
+{
+    // get all values of node
+    float $vPosition[] = `getAttr ($deformerName+".currentPosition")`; 
+    float $envelope = `getAttr ($deformerName+".envelope")`; 
+    float $dWeight[] = `getAttr ($deformerName+".currentWeight")`; 
+    float $mWorldMatrix[] = `getAttr ($deformerName+".currentWorldMatrix")`; 
+    int $multiIndex = `getAttr ($deformerName+".currentMultiIndex")`;
+    string $geometryType = `getAttr ($deformerName+".currentGeometryType")`;
+    
+    // print them
+    print ("\n--------------------------\ndeformer: "+$deformerName);
+    print ("\ncount: "+$count);
+    print ("\nposition: "); print $vPosition;
+    print ("\nenvelope: "); print $envelope;    
+    print ("\nweight: "); print $dWeight;    
+    print ("\nworldMatrix: "); print $mWorldMatrix;        
+    print ("\nmultiIndex: "); print $multiIndex;        
+    print ("\geometryType: "); print $geometryType;
+    
+    // return undeformed positions
+    return $vPosition;
+}
+
+// function to add an attribute interface to the deformer node
+// these interface attributes will be used in the main deformation
+// function
+global proc int doNothingDeformer.interface(string $deformerName)
+{
+    // not much doing here, are we?
+    print "\nINTERFACE";
+   addAttr -shortName ms -longName mass -defaultValue 1.0 -minValue 0.001 -maxValue 10000 $deformerName;
+      addAttr -shortName ls -longName muffle -defaultValue 1.0 -minValue 0.001 -maxValue 10000 $deformerName;
+    return true;
+}
+
+// polyCube;
+// deformer -type mScriptDeformer;
+// setAttr -type "string" mScriptDeformer1.script "doNothingDeformer";
+// c:/dev/melfunctions/mScriptDeformer_examples/doNothingDeformer.mel

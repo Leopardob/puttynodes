@@ -1,0 +1,33 @@
+// make a unique name based on node type
+proc string ctrlName(string $attr, string $ctrl)
+{
+	string $e[];
+	tokenize $attr "." $e;
+	string $nt= `nodeType $e[0]`;
+	return ("msc"+$nt+$ctrl);	
+}
+
+global proc AEpScriptMelFunctionControlNew(string $attr)
+{
+		string $func = ctrlName($attr, "MelFunction");
+				
+		textFieldGrp -label "Mel Function" 
+								-ann "Mel function used during computation"
+								$func;	
+		
+		AEpScriptMelFunctionControlReplace($attr);	
+}
+
+global proc AEpScriptMelFunctionControlReplace(string $attr)
+{
+		string $func = ctrlName($attr, "MelFunction");
+		connectControl  -index 2 $func $attr;
+		textFieldGrp -e -editable false $func	;
+}
+
+
+global proc AEpScriptMelFunctionControl(string $attr)
+{
+		editorTemplate -callCustom  "AEpScriptMelFunctionControlNew" "AEpScriptMelFunctionControlReplace" $attr ;
+		editorTemplate -suppress $attr;
+}

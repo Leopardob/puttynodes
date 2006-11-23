@@ -1,0 +1,28 @@
+
+
+
+global proc AEputtyMapperTemplate(string $nodeName )
+{
+	editorTemplate -beginScrollLayout;
+	
+	editorTemplate -beginLayout "Putty Particle Attribute Mapper Settings" -collapse 0 ;
+	
+		AEpScriptControl "script";
+		AEpScriptMelFunctionControl "cmdBaseName";
+		AEpScriptSourceControl "source" ;
+			
+	editorTemplate -endLayout;
+	
+	editorTemplate -addExtraControls -extraControlsLabel "Script Attributes";
+
+	AEdependNodeTemplate $nodeName;
+
+	editorTemplate -endScrollLayout;
+    
+    editorTemplate -suppress "uCoordPP";
+    editorTemplate -suppress "vCoordPP";    
+    editorTemplate -suppress "minValue";    
+    editorTemplate -suppress "maxValue";        		
+    editorTemplate -suppress "particleCount";        		    
+    editorTemplate -suppress "computeNode";        		        
+}
