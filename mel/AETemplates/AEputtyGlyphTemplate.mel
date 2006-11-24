@@ -7,7 +7,19 @@ global proc AEputtyGlyphTemplate(string $nodeName )
 		editorTemplate -beginLayout "Putty Glyph Settings" -collapse 0 ;
 
 			editorTemplate -addControl "glyphType";
-
+			editorTemplate -addControl "scale";            
+			
+            editorTemplate -addSeparator;        
+                
+            editorTemplate -addControl "drawLines";
+            editorTemplate -addControl "lineColor";
+            editorTemplate -addControl "lineWidth";
+            
+            editorTemplate -addControl "drawPoint1";
+            editorTemplate -addControl "drawPoint2";            
+            editorTemplate -addControl "pointColor";
+            editorTemplate -addControl "pointSize";
+                                                            
 		editorTemplate -endLayout;
 	
 		editorTemplate -addExtraControls -extraControlsLabel "Script Attributes";
@@ -16,4 +28,5 @@ global proc AEputtyGlyphTemplate(string $nodeName )
 
 	editorTemplate -endScrollLayout;
 }
+
 
