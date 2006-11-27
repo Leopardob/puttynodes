@@ -44,16 +44,16 @@ MStatus initializePlugin( MObject obj )
 	status = plugin.registerNode( "puttyField", puttyField::id, &puttyField::creator, &puttyField::initialize,MPxNode::kFieldNode );
   	SYS_ERROR_CHECK(status, "registering field node 'puttyField' failed!");
         
-#if MAYA_API_VERSION >= 800
-	status = plugin.registerNode( "puttyMapper", puttyMapper::id, &puttyMapper::creator, &puttyMapper::initialize,MPxNode::kParticleAttributeMapperNode );
-    SYS_ERROR_CHECK(status, "registering  node 'puttyMapper' failed!");
-#endif // maya 8
-
 	status = plugin.registerNode( "puttyMeshInstancer", puttyMeshInstancer::id, &puttyMeshInstancer::creator, &puttyMeshInstancer::initialize,MPxNode::kLocatorNode );
 	  SYS_ERROR_CHECK(status, "registering  node 'puttyMeshInstancer' failed!");
 
 	status = plugin.registerNode( "puttyGlyph", puttyGlyph::id, &puttyGlyph::creator, &puttyGlyph::initialize,MPxNode::kLocatorNode );
     SYS_ERROR_CHECK(status, "registering  node 'puttyGlyph' failed!");
+
+#if MAYA_API_VERSION >= 800
+	status = plugin.registerNode( "puttyMapper", puttyMapper::id, &puttyMapper::creator, &puttyMapper::initialize,MPxNode::kParticleAttributeMapperNode );
+    SYS_ERROR_CHECK(status, "registering  node 'puttyMapper' failed!");
+#endif // maya 8
 
 	return status;
 }
@@ -71,16 +71,17 @@ MStatus uninitializePlugin( MObject obj )
 	status = plugin.deregisterNode( puttyField::id );
   	SYS_ERROR_CHECK(status, "deregistering field node 'puttyField' failed!");
 
-#if MAYA_API_VERSION >= 800
-    status = plugin.deregisterNode( puttyMapper::id );
-    SYS_ERROR_CHECK(status, "deregistering  node 'puttyMapper' failed!");
-#endif // maya 8
-
 	status = plugin.deregisterNode( puttyMeshInstancer::id );
 	SYS_ERROR_CHECK(status, "deregistering  node 'puttyMeshInstancer' failed!");
 
 	status = plugin.deregisterNode( puttyGlyph::id );
 	SYS_ERROR_CHECK(status, "deregistering  node 'puttyGlyph' failed!");
+
+#if MAYA_API_VERSION >= 800
+    status = plugin.deregisterNode( puttyMapper::id );
+    SYS_ERROR_CHECK(status, "deregistering  node 'puttyMapper' failed!");
+#endif // maya 8
+
 
 	return status;
 }

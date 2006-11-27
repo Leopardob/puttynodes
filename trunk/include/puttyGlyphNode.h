@@ -23,9 +23,11 @@
 
 
 
-#define PG_GT_BBOX 	 3
+#define PG_GT_BBOX 	 4
+#define PG_GT_POINT  3
 #define PG_GT_LINE 	 2
 #define PG_GT_VECTOR 1
+
 
 
 
@@ -42,6 +44,7 @@ class puttyGlyph : public MPxLocatorNode
         
 		virtual void drawBBox(MVectorArray &vecIn1,MVectorArray &vecIn2);
 		virtual void drawLine(MVectorArray &vecIn1,MVectorArray &vecIn2);
+		virtual void drawPoints(MVectorArray &vecIn1,MVectorArray &vecIn2);        
 		virtual void drawVector(MVectorArray &vecIn1,MVectorArray &vecIn2,float scale);
                         
         virtual void draw( M3dView & view, const MDagPath & path, 
@@ -83,8 +86,25 @@ class puttyGlyph : public MPxLocatorNode
 	private:
     	
         GLuint mBBoxDL; // display list is for the bounding box
+
+        float  mLineColorR;
+        float  mLineColorG;
+        float  mLineColorB;                
+
+        float  mPointColorR;                
+	    float  mPointColorG;
+        float  mPointColorB;                        
+        
+        float  mPointSize; 
+        float  mLineWidth; 
+                
+        bool mDrawPoint1;
+        bool mDrawPoint2;        
+		bool mDrawLines;        
+        
 };
 
 
 
 #endif
+
