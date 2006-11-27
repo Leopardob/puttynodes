@@ -131,6 +131,7 @@ MStatus puttyGlyph::initialize()
    	aGlyphType = eAttr.create("glyphType", "gt", PG_GT_VECTOR, &status);
 	eAttr.addField("vector (v1 pos, v2 dir)",PG_GT_VECTOR);        
 	eAttr.addField("line (v1, v2 pos)",PG_GT_LINE);    
+	eAttr.addField("point (v1 pos)",PG_GT_POINT);
 	eAttr.addField("bounding box (v1, v2 corner)",PG_GT_BBOX);
    	eAttr.setKeyable(true);
 	eAttr.setStorable(true);
@@ -183,7 +184,7 @@ MStatus puttyGlyph::initialize()
 	aLineWidth =  nAttr.create( "lineWidth", "lw", MFnNumericData::kFloat );
 	nAttr.setDefault( 1.0 ); 
    	nAttr.setMin( 0.0 ); 
-   	nAttr.setSoftMax( 5.0 ); 
+   	nAttr.setSoftMax( 15.0 ); 
 	nAttr.setKeyable( true ); 
 	nAttr.setReadable( true ); 
 	nAttr.setWritable( true ); 
@@ -191,9 +192,9 @@ MStatus puttyGlyph::initialize()
     SYS_ERROR_CHECK( addAttribute( aLineWidth ), "adding aLineWidth" );   
     
 	aPointSize =  nAttr.create( "pointSize", "ps", MFnNumericData::kFloat );
-	nAttr.setDefault( 1.0 ); 
+	nAttr.setDefault( 3.0 ); 
    	nAttr.setMin( 0.0 ); 
-   	nAttr.setSoftMax( 5.0 ); 
+   	nAttr.setSoftMax( 50.0 ); 
 	nAttr.setKeyable( true ); 
 	nAttr.setReadable( true ); 
 	nAttr.setWritable( true ); 
@@ -201,7 +202,6 @@ MStatus puttyGlyph::initialize()
     SYS_ERROR_CHECK( addAttribute( aPointSize ), "adding aPointSize" );   
     
     
-
     // inputs
     aVecInput1 = tAttr.create( "vecInput1", "vi1", MFnData::kVectorArray);
     tAttr.setStorable(false);
@@ -236,6 +236,8 @@ void puttyGlyph::postConstructor()
 // bounding box info
 bool puttyGlyph::isBounded() const { return true; }
 
+// at the moment, just filling up with values from the first vector array
+// not accurate but hopefully sufficient
 MBoundingBox puttyGlyph::boundingBox() const
 { 
 	MBoundingBox bbox;
@@ -250,21 +252,21 @@ MBoundingBox puttyGlyph::boundingBox() const
     MFnVectorArrayData vecFn1(vecObj);
     vecIn1 = vecFn1.array(&status);
     
-    plug.setAttribute(aVecInput2);
-    plug.getValue(vecObj);
-    MFnVectorArrayData vecFn2(vecObj);
-    vecIn2 = vecFn2.array(&status);
+//  plug.setAttribute(aVecInput2);
+//  plug.getValue(vecObj);
+//  MFnVectorArrayData vecFn2(vecObj);
+//  vecIn2 = vecFn2.array(&status);
 
 	// verify length
-    if (vecIn1.length() == vecIn2.length())
-    {	
+//    if (vecIn1.length() == vecIn2.length())
+//    {	
     	//put all points in bbox;
         for (int i=0;i<vecIn1.length();i++)
         {
 	        bbox.expand(vecIn1[i]);
-	        bbox.expand(vecIn2[i]);            
+//	        bbox.expand(vecIn2[i]);            
          }
-    }    
+//    }    
     
     return bbox;
 }
@@ -278,56 +280,128 @@ MBoundingBox puttyGlyph::boundingBox() const
 // draw bounding box
 void puttyGlyph::drawBBox(MVectorArray &vecIn1,MVectorArray &vecIn2)
 {
-	for (int i=0;i<vecIn1.length();i++)
+	if (mDrawLines)
     {
-        glPushMatrix();
-        
-        // move to the correct spot, set up the right scale
-        MVector diff = vecIn2[i] - vecIn1[i];        
-        MVector pos = (vecIn1[i] + vecIn2[i]) * 0.5;
-        
-        glTranslatef(float(pos.x),float(pos.y),float(pos.z));            
-        glScalef(fabs(diff.x),fabs(diff.y),fabs(diff.z));                
+        float lw;
+	    glGetFloatv(GL_LINE_WIDTH,&lw);
+		glLineWidth(mLineWidth);
 
-        // call the list
-        glCallList(mBBoxDL);
-        glPopMatrix();
-    }        
+       	glColor3f(mLineColorR,mLineColorG,mLineColorB);
+        
+	    for (int i=0;i<vecIn1.length();i++)
+    	{
+	        glPushMatrix();
+        
+    	    // move to the correct spot, set up the right scale
+	        MVector diff = vecIn2[i] - vecIn1[i];        
+    	    MVector pos = (vecIn1[i] + vecIn2[i]) * 0.5;
+        
+	        glTranslatef(float(pos.x),float(pos.y),float(pos.z));            
+    	    glScalef(fabs(diff.x),fabs(diff.y),fabs(diff.z));                
+
+	        // call the list
+    	    glCallList(mBBoxDL);
+        	glPopMatrix();
+	    }    
+        
+       	glLineWidth(lw);        
+    }
+    
+    // draw the points
+    drawPoints(vecIn1,vecIn2);           
 }
 
 /*************************************************************************************/
 // draw line
 void puttyGlyph::drawLine(MVectorArray &vecIn1,MVectorArray &vecIn2)
 {
-	glBegin(GL_LINES);
-    
-	for (int i=0;i<vecIn1.length();i++)
+	if (mDrawLines)
     {
-		glVertex3f(vecIn1[i].x,vecIn1[i].y,vecIn1[i].z);
-		glVertex3f(vecIn2[i].x,vecIn2[i].y,vecIn2[i].z);        
-    }        
+   	    float lw;
+	    glGetFloatv(GL_LINE_WIDTH,&lw);
+		glLineWidth(mLineWidth);
+
+       	glColor3f(mLineColorR,mLineColorG,mLineColorB);
+        
+		glBegin(GL_LINES);
     
-    glEnd();
+		for (int i=0;i<vecIn1.length();i++)
+    	{
+			glVertex3f(vecIn1[i].x,vecIn1[i].y,vecIn1[i].z);
+			glVertex3f(vecIn2[i].x,vecIn2[i].y,vecIn2[i].z);        
+    	}        
+    
+	    glEnd();
+        
+       	glLineWidth(lw);
+    }
+    
+    // draw the points
+    drawPoints(vecIn1,vecIn2);    
 }
 
 /*************************************************************************************/
 // draw vector
 void puttyGlyph::drawVector(MVectorArray &vecIn1,MVectorArray &vecIn2, float scale)
 {
-	glBegin(GL_LINES);
-    
-	for (int i=0;i<vecIn1.length();i++)
-    {
-		glVertex3f(vecIn1[i].x,vecIn1[i].y,vecIn1[i].z);
+	MVectorArray endPos(vecIn1);
 
-        MVector pos2 = vecIn1[i] + scale * vecIn2[i];
+	// calculate the new end position for the line
+	for (int i=0;i<endPos.length();i++)
+	    endPos[i] += scale * vecIn2[i];
+
+	if (mDrawLines)
+    {
+        float lw;
+	    glGetFloatv(GL_LINE_WIDTH,&lw);
+		glLineWidth(mLineWidth);
+
+       	glColor3f(mLineColorR,mLineColorG,mLineColorB);
         
-		glVertex3f(pos2.x,pos2.y,pos2.z);        
-    }        
+		// do the drawing of the lines
+		glBegin(GL_LINES);
     
-    glEnd();
+		for (int i=0;i<vecIn1.length();i++)
+    	{
+			glVertex3f(vecIn1[i].x,vecIn1[i].y,vecIn1[i].z);        
+			glVertex3f(endPos[i].x,endPos[i].y,endPos[i].z);        
+	    }        
+    
+	    glEnd();
+        
+       	glLineWidth(lw);
+    }
+    
+    // draw the points
+    drawPoints(vecIn1,endPos);
+    
 }
 
+////////////////////////////// draw the points
+void puttyGlyph::drawPoints(MVectorArray &vecIn1,MVectorArray &vecIn2)
+{
+	// draw the points
+    glColor3f(mPointColorR,mPointColorG,mPointColorB);
+    
+    float ps;
+    glGetFloatv(GL_POINT_SIZE,&ps); 
+    glPointSize(mPointSize);
+
+	glBegin (GL_POINTS);
+
+	if (mDrawPoint1)
+		for (int i=0;i<vecIn1.length();i++)
+        	glVertex3f(vecIn1[i].x,vecIn1[i].y,vecIn1[i].z);
+            
+	if (mDrawPoint2)
+		for (int i=0;i<vecIn2.length();i++)
+        	glVertex3f(vecIn2[i].x,vecIn2[i].y,vecIn2[i].z);
+
+	glEnd();
+    
+    glPointSize(ps);
+	glPopAttrib();	
+}
 
 
 /*************************************************************************************/
@@ -369,38 +443,38 @@ void puttyGlyph::draw( M3dView & view, const MDagPath & /*path*/,
     // drawing parameters
     
     plug.setAttribute(aDrawLines);
-    bool mDrawLines; plug.getValue(mDrawLines);
+	plug.getValue(mDrawLines);
       
     plug.setAttribute(aDrawPoint1);
-    bool mDrawPoint1; plug.getValue(mDrawPoint1);
+    plug.getValue(mDrawPoint1);
 
     plug.setAttribute(aDrawPoint2);
-    bool mDrawPoint2; plug.getValue(mDrawPoint2);
+    plug.getValue(mDrawPoint2);
     
     plug.setAttribute(aPointSize);
-    float mPointSize; plug.getValue(mPointSize);
+    plug.getValue(mPointSize);
 
     plug.setAttribute(aLineWidth);
-    float mLineWidth; plug.getValue(mLineWidth);
+	plug.getValue(mLineWidth);
 
     // color
     plug.setAttribute(aLineColorR);
-    float mLineColorR; plug.getValue(mLineColorR);
+	plug.getValue(mLineColorR);
 
     plug.setAttribute(aLineColorG);
-    float mLineColorG; plug.getValue(mLineColorG);
+    plug.getValue(mLineColorG);
 
     plug.setAttribute(aLineColorB);
-    float mLineColorB; plug.getValue(mLineColorB);
+    plug.getValue(mLineColorB);
     
     plug.setAttribute(aPointColorR);
-    float mPointColorR; plug.getValue(mPointColorR);
+    plug.getValue(mPointColorR);
 
     plug.setAttribute(aPointColorG);
-    float mPointColorG; plug.getValue(mPointColorG);
+    plug.getValue(mPointColorG);
 
     plug.setAttribute(aPointColorB);
-    float mPointColorB; plug.getValue(mPointColorB);    
+    plug.getValue(mPointColorB);    
       
     
     /////////////////////////////////////////////////////////////////////
@@ -418,49 +492,13 @@ void puttyGlyph::draw( M3dView & view, const MDagPath & /*path*/,
     glPushAttrib( GL_CURRENT_BIT );
     glMatrixMode (GL_MODELVIEW);
 
-	// draw the lines
-	if (mDrawLines)
+	switch(type)
     {
-    
-        float lw;
-        glGetFloatv(GL_LINE_WIDTH,&lw);
-	    glLineWidth(mLineWidth);
-
-	   	glColor3f(mLineColorR,mLineColorG,mLineColorB);
-    
-	    switch(type)
-    	{
-    		case (PG_GT_BBOX): { drawBBox(vecIn1,vecIn2); break; }
-	    	case (PG_GT_LINE): { drawLine(vecIn1,vecIn2); break; }
-    		case (PG_GT_VECTOR): { drawVector(vecIn1,vecIn2,scale); break; }        
-	    }
-        
-       	glLineWidth(lw);
-    }
-    
-    
-    
-	// draw the points
-    glColor3f(mPointColorR,mPointColorG,mPointColorB);
-    
-    float ps;
-    glGetFloatv(GL_POINT_SIZE,&ps); 
-//    glPointSize(mPointSize);
-
-	glBegin (GL_POINTS);
-
-	if (mDrawPoint1)
-		for (int i=0;i<vecIn1.length();i++)
-        	glVertex3f(vecIn1[i].x,vecIn1[i].y,vecIn1[i].z);
-            
-	if (mDrawPoint2)
-		for (int i=0;i<vecIn2.length();i++)
-        	glVertex3f(vecIn2[i].x,vecIn2[i].y,vecIn2[i].z);
-
-	glEnd();
-    
-//    glPointSize(ps);
-	glPopAttrib();
+    	case (PG_GT_BBOX): { drawBBox(vecIn1,vecIn2); break; }
+	    case (PG_GT_LINE): { drawLine(vecIn1,vecIn2); break; }
+    	case (PG_GT_VECTOR): { drawVector(vecIn1,vecIn2,scale); break; }        
+    	case (PG_GT_POINT): { mDrawPoint2 = false; drawPoints(vecIn1,vecIn2); break; }                
+	}
     
     
     // done
