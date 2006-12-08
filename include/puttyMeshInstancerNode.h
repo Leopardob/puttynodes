@@ -20,6 +20,7 @@
 #include <maya/MGlobal.h>
 #include <maya/MPxLocatorNode.h>
 #include <maya/MTypeId.h>
+#include <maya/MItMeshPolygon.h>
 
 
 
@@ -38,6 +39,8 @@ class puttyMeshInstancer : public MPxLocatorNode
 		        		   M3dView::DisplayStyle style,
 						   M3dView::DisplayStatus status );
 
+		virtual MStatus	compute( const MPlug& plug, MDataBlock& block );
+
        	virtual bool isBounded() const;
        	virtual bool isTransparent() const; 
        
@@ -46,6 +49,15 @@ class puttyMeshInstancer : public MPxLocatorNode
 		static  MTypeId id;
         
         static  MObject aParticle; // particle input
+        static  MObject aReadyForDrawing; // is everything prepared for drawing?
+    	static  MObject aMesh; // input for meshes to instance
+        
+    private:
+    
+    	virtual MStatus	buildDisplayList(MItMeshPolygon &meshIt, GLuint id );
+        
+        GLuint mMeshDL;
+        
 };
 
 
