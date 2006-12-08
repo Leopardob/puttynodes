@@ -4,7 +4,7 @@ user = vfx.build.execute('whoami')['output']
 host = vfx.build.execute('hostname')['output']
 
 project = "puttyNodes"
-version = "0.1.0"
+version = "0.3.0"
 
 # checks
 maya_location = os.getenv('MAYA_LOCATION')

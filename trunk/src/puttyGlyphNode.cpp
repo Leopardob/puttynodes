@@ -480,7 +480,7 @@ void puttyGlyph::draw( M3dView & view, const MDagPath & /*path*/,
     /////////////////////////////////////////////////////////////////////
     // verify the values
     
-    if (vecIn1.length() != vecIn2.length())
+    if ((vecIn1.length() != vecIn2.length()) && (type != PG_GT_POINT))
     	return;
 
     /////////////////////////////////////////////////////////////////////

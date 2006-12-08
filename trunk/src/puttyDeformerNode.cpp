@@ -461,7 +461,7 @@ MStatus puttyDeformer::deform( MDataBlock& block, MItGeometry& iter, const MMatr
     SYS_ERROR_CHECK(status, "Error getting aCmdBaseName  handle\n");    
     MString script =  dh.asString(); 
         
- /*   if (script == "")
+ /* if (script == "")
     {
         status = MS::kFailure;
         USER_ERROR_CHECK(status, "no script provided!\n");    

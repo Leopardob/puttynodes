@@ -28,24 +28,25 @@
 MStatus initializePlugin( MObject obj )
 { 
 	MStatus   status;
-	MFnPlugin plugin( obj, "Carsten Kolve", "0.1", "Any");
+	MFnPlugin plugin( obj, "Carsten Kolve", "0.2", "Any");
 	MGlobal::displayInfo("--------------------------------------------------------------------------------------");
-	MGlobal::displayInfo("puttyNodes 0.1 (c) Carsten Kolve, 2006");
+	MGlobal::displayInfo("puttyNodes 0.2 (c) Carsten Kolve, 2006");
     MGlobal::displayInfo("Contributions to this plugin (c) Rising Sun Pictures PTY Ltd, www.rsp.com.au");
 	MGlobal::displayInfo("Licensed under the GPL, if you find this useful please consider donating to a charity!");
 	MGlobal::displayInfo("Visit www.kolve.com for news, updates and information on the licenses!");
 	MGlobal::displayInfo("--------------------------------------------------------------------------------------");
     
     // nodes
-    
-    status = plugin.registerNode( "puttyDeformer", puttyDeformer::id, &puttyDeformer::creator, &puttyDeformer::initialize, MPxNode::kDeformerNode );
-    SYS_ERROR_CHECK(status, "registering deformer node 'puttyDeformer' failed!");
+
+	status = plugin.registerNode( "puttyMeshInstancer", puttyMeshInstancer::id, &puttyMeshInstancer::creator, &puttyMeshInstancer::initialize,MPxNode::kLocatorNode );
+  	SYS_ERROR_CHECK(status, "registering  node 'puttyMeshInstancer' failed!");
 
 	status = plugin.registerNode( "puttyField", puttyField::id, &puttyField::creator, &puttyField::initialize,MPxNode::kFieldNode );
   	SYS_ERROR_CHECK(status, "registering field node 'puttyField' failed!");
-        
-	status = plugin.registerNode( "puttyMeshInstancer", puttyMeshInstancer::id, &puttyMeshInstancer::creator, &puttyMeshInstancer::initialize,MPxNode::kLocatorNode );
-	  SYS_ERROR_CHECK(status, "registering  node 'puttyMeshInstancer' failed!");
+
+    
+    status = plugin.registerNode( "puttyDeformer", puttyDeformer::id, &puttyDeformer::creator, &puttyDeformer::initialize, MPxNode::kDeformerNode );
+    SYS_ERROR_CHECK(status, "registering deformer node 'puttyDeformer' failed!");
 
 	status = plugin.registerNode( "puttyGlyph", puttyGlyph::id, &puttyGlyph::creator, &puttyGlyph::initialize,MPxNode::kLocatorNode );
     SYS_ERROR_CHECK(status, "registering  node 'puttyGlyph' failed!");
@@ -63,20 +64,21 @@ MStatus uninitializePlugin( MObject obj )
 	MStatus   status;
 	MFnPlugin plugin( obj );
 
-    
-    // nodes
-    status = plugin.deregisterNode( puttyDeformer::id );
-    SYS_ERROR_CHECK(status, "deregistering deformer node 'puttyDeformer' failed!");
+	status = plugin.deregisterNode( puttyMeshInstancer::id );
+//	cerr << status.errorString() << " bla "<< plugin.isNodeRegistered("puttyMeshInstancer");
+	SYS_ERROR_CHECK(status, "deregistering  node 'puttyMeshInstancer' failed!");
 
 	status = plugin.deregisterNode( puttyField::id );
   	SYS_ERROR_CHECK(status, "deregistering field node 'puttyField' failed!");
 
-	status = plugin.deregisterNode( puttyMeshInstancer::id );
-	SYS_ERROR_CHECK(status, "deregistering  node 'puttyMeshInstancer' failed!");
+    status = plugin.deregisterNode( puttyDeformer::id );
+    SYS_ERROR_CHECK(status, "deregistering deformer node 'puttyDeformer' failed!");
 
 	status = plugin.deregisterNode( puttyGlyph::id );
 	SYS_ERROR_CHECK(status, "deregistering  node 'puttyGlyph' failed!");
 
+    
+    // nodes
 #if MAYA_API_VERSION >= 800
     status = plugin.deregisterNode( puttyMapper::id );
     SYS_ERROR_CHECK(status, "deregistering  node 'puttyMapper' failed!");
