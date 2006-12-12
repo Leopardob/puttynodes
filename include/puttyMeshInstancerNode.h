@@ -18,47 +18,123 @@
 
 // Maya
 #include <maya/MGlobal.h>
-#include <maya/MPxLocatorNode.h>
+
+#include <maya/MPxSurfaceShape.h>
+#include <maya/MPxSurfaceShapeUI.h>
 #include <maya/MTypeId.h>
 #include <maya/MItMeshPolygon.h>
 
 
+#define LEAD_COLOR				18	// green
+#define ACTIVE_COLOR			15	// white
+#define ACTIVE_AFFECTED_COLOR	8	// purple
+#define DORMANT_COLOR			4	// blue
+#define HILITE_COLOR			17	// pale blue
 
-
-class puttyMeshInstancer : public MPxLocatorNode
+/////////////////////////////////////////////////////////////////////
+// Geometry class, this will be our interface object between shape and ui
+//
+class puttyInstancedMeshGeom 
 {
 	public:
-				puttyMeshInstancer();
-		virtual	~puttyMeshInstancer();
-		static	void*	creator();
-		static	MStatus	initialize();
-        
-		virtual	void	postConstructor();            
-           
-        virtual void draw( M3dView & view, const MDagPath & path, 
-		        		   M3dView::DisplayStyle style,
-						   M3dView::DisplayStatus status );
-
-		virtual MStatus	compute( const MPlug& plug, MDataBlock& block );
-
-       	virtual bool isBounded() const;
-       	virtual bool isTransparent() const; 
-       
-//        virtual MStatus compute( const MPlug& plug, MDataBlock& block )  ;     
-	
-		static  MTypeId id;
-        
-        static  MObject aParticle; // particle input
-        static  MObject aReadyForDrawing; // is everything prepared for drawing?
-    	static  MObject aMesh; // input for meshes to instance
-        
-    private:
-    
-    	virtual MStatus	buildDisplayList(MItMeshPolygon &meshIt, GLuint id );
-        
-        GLuint mMeshDL;
-        
+		MVectorArray position;
+        GLuint meshDL;
+        bool readyForDrawing;
+//	MVectorArray rotation;
+//	MVectorArray scale;        
+//	MVectorArray color;            
 };
+
+
+
+/////////////////////////////////////////////////////////////////////
+//
+// Shape class - defines the non-UI part of a shape node
+//
+class puttyMeshInstancer : public MPxSurfaceShape
+{
+public:
+	puttyMeshInstancer();
+	virtual ~puttyMeshInstancer(); 
+
+	virtual void			postConstructor();
+	virtual MStatus			compute( const MPlug&, MDataBlock& );
+//    virtual bool			getInternalValue( const MPlug&,
+//											  MDataHandle& );
+//    virtual bool			setInternalValue( const MPlug&,
+//											  const MDataHandle& );
+					  
+	virtual bool            isBounded() const;
+	virtual MBoundingBox    boundingBox() const; 
+
+	static  void *		creator();
+	static  MStatus		initialize();
+	puttyInstancedMeshGeom*		geometry();
+
+private:
+	puttyInstancedMeshGeom*		fGeometry;
+
+	// Attributes
+	//
+    
+    static  MObject aParticle; // particle input
+	static  MObject aMesh; // input for meshes to instance    
+    static  MObject aReadyForDrawing; // is everything prepared for drawing?
+  	
+    
+   	virtual MStatus	buildDisplayList(MObject &meshObj, GLuint id );
+        
+    GLuint mMeshDL;
+ 
+public:
+	static	MTypeId		id;
+};
+
+/////////////////////////////////////////////////////////////////////
+//
+// UI class	- defines the UI part of a shape node
+//
+class puttyMeshInstancerUI : public MPxSurfaceShapeUI
+{
+public:
+	puttyMeshInstancerUI();
+	virtual ~puttyMeshInstancerUI(); 
+
+	virtual void	getDrawRequests( const MDrawInfo & info,
+									 bool objectAndActiveOnly,
+									 MDrawRequestQueue & requests );
+                                     
+	virtual void	draw( const MDrawRequest & request,
+						  M3dView & view ) const;
+                          
+	virtual bool	select( MSelectInfo &selectInfo,
+							MSelectionList &selectionList,
+							MPointArray &worldSpaceSelectPts ) const;
+
+	void			getDrawRequestsWireframe( MDrawRequest&,
+											  const MDrawInfo& );
+                                              
+	void			getDrawRequestsShaded(	  MDrawRequest&,
+											  const MDrawInfo&,
+											  MDrawRequestQueue&,
+											  MDrawData& data );
+
+	static  void *  creator();
+
+private:
+
+	// Draw Tokens
+	//
+	enum {
+		kDrawWireframe,
+		kDrawWireframeOnShaded,
+		kDrawSmoothShaded,
+		kDrawFlatShaded,
+        kDrawPoints,
+		kLastToken
+	};
+};
+
 
 
 
