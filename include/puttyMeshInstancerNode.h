@@ -19,10 +19,10 @@
 // Maya
 #include <maya/MGlobal.h>
 
-#include <maya/MPxSurfaceShape.h>
-#include <maya/MPxSurfaceShapeUI.h>
+#include <maya/MPxLocatorNode.h>
 #include <maya/MTypeId.h>
 #include <maya/MItMeshPolygon.h>
+#include <maya/MFnArrayAttrsData.h>
 
 
 #define LEAD_COLOR				18	// green
@@ -31,110 +31,67 @@
 #define DORMANT_COLOR			4	// blue
 #define HILITE_COLOR			17	// pale blue
 
-/////////////////////////////////////////////////////////////////////
-// Geometry class, this will be our interface object between shape and ui
-//
-class puttyInstancedMeshGeom 
-{
-	public:
-		MVectorArray position;
-        GLuint meshDL;
-        bool readyForDrawing;
-//	MVectorArray rotation;
-//	MVectorArray scale;        
-//	MVectorArray color;            
-};
-
 
 
 /////////////////////////////////////////////////////////////////////
 //
 // Shape class - defines the non-UI part of a shape node
 //
-class puttyMeshInstancer : public MPxSurfaceShape
+class puttyMeshInstancer : public MPxLocatorNode
 {
-public:
+	public:
+
 	puttyMeshInstancer();
 	virtual ~puttyMeshInstancer(); 
 
-	virtual void			postConstructor();
-	virtual MStatus			compute( const MPlug&, MDataBlock& );
-//    virtual bool			getInternalValue( const MPlug&,
-//											  MDataHandle& );
-//    virtual bool			setInternalValue( const MPlug&,
-//											  const MDataHandle& );
-					  
-	virtual bool            isBounded() const;
-	virtual MBoundingBox    boundingBox() const; 
+	virtual void postConstructor();
+
+	virtual MStatus getVectorArray( MFnArrayAttrsData &particleFn, const MString vectorName, MVectorArray &vectorArray, bool &exists );                                             
+	virtual MStatus computeInstanceData( const MPlug&, MDataBlock& block);    
+	virtual MStatus computeDisplayLists( const MPlug&, MDataBlock& block);    
+	virtual MStatus compute( const MPlug&, MDataBlock& block);
+    
+	virtual void drawInstancesShaded();    
+	virtual void drawInstancesWireframe(M3dView & view, M3dView::DisplayStatus status);        
+    virtual void draw( M3dView & view, const MDagPath & path, M3dView::DisplayStyle style,  M3dView::DisplayStatus status );
+    
+
+   	virtual bool isBounded() const;
+	virtual MBoundingBox boundingBox() const;
+	virtual bool isTransparent() const; 
 
 	static  void *		creator();
 	static  MStatus		initialize();
-	puttyInstancedMeshGeom*		geometry();
 
-private:
-	puttyInstancedMeshGeom*		fGeometry;
 
-	// Attributes
-	//
-    
+	// Attributes    
+	static	MTypeId	id;    
     static  MObject aParticle; // particle input
 	static  MObject aMesh; // input for meshes to instance    
-    static  MObject aReadyForDrawing; // is everything prepared for drawing?
+    static  MObject aDisplayListsReady; // is everything prepared for drawing?
+    static  MObject aInstanceDataReady; // is everything prepared for drawing?    
   	
-    
+	    static MObject aColorR; 
+        static MObject aColorG; 
+	    static MObject aColorB; 
+    static MObject aColor; 
+
+    static MObject aOpacity; 
+
+    private:
    	virtual MStatus	buildDisplayList(MObject &meshObj, GLuint id );
-        
     GLuint mMeshDL;
  
-public:
-	static	MTypeId		id;
+ 	MVectorArray instancePosition;
+	MVectorArray instanceRotation;    
+	MVectorArray instanceScale;    
+	MVectorArray instanceColor; 
+    float instanceOpacity;
+    int instanceCount;
+    
+	bool instanceWireframeOverShaded;    
+       	
 };
-
-/////////////////////////////////////////////////////////////////////
-//
-// UI class	- defines the UI part of a shape node
-//
-class puttyMeshInstancerUI : public MPxSurfaceShapeUI
-{
-public:
-	puttyMeshInstancerUI();
-	virtual ~puttyMeshInstancerUI(); 
-
-	virtual void	getDrawRequests( const MDrawInfo & info,
-									 bool objectAndActiveOnly,
-									 MDrawRequestQueue & requests );
-                                     
-	virtual void	draw( const MDrawRequest & request,
-						  M3dView & view ) const;
-                          
-	virtual bool	select( MSelectInfo &selectInfo,
-							MSelectionList &selectionList,
-							MPointArray &worldSpaceSelectPts ) const;
-
-	void			getDrawRequestsWireframe( MDrawRequest&,
-											  const MDrawInfo& );
-                                              
-	void			getDrawRequestsShaded(	  MDrawRequest&,
-											  const MDrawInfo&,
-											  MDrawRequestQueue&,
-											  MDrawData& data );
-
-	static  void *  creator();
-
-private:
-
-	// Draw Tokens
-	//
-	enum {
-		kDrawWireframe,
-		kDrawWireframeOnShaded,
-		kDrawSmoothShaded,
-		kDrawFlatShaded,
-        kDrawPoints,
-		kLastToken
-	};
-};
-
 
 
 
