@@ -38,7 +38,7 @@ MStatus initializePlugin( MObject obj )
     
     // nodes
 
-	status = plugin.registerShape( "puttyMeshInstancer", puttyMeshInstancer::id, &puttyMeshInstancer::creator, &puttyMeshInstancer::initialize,&puttyMeshInstancerUI::creator );
+	status = plugin.registerNode( "puttyMeshInstancer", puttyMeshInstancer::id, &puttyMeshInstancer::creator, &puttyMeshInstancer::initialize,MPxNode::kLocatorNode );
   	SYS_ERROR_CHECK(status, "registering  node 'puttyMeshInstancer' failed!");
 
 	status = plugin.registerNode( "puttyField", puttyField::id, &puttyField::creator, &puttyField::initialize,MPxNode::kFieldNode );
