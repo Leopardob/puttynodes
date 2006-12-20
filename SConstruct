@@ -25,6 +25,7 @@ mayaplugin_cppsrcs = [  'src/plugin.cpp',
                         'src/puttyFieldNode.cpp',                          
                         'src/puttyMeshInstancerNode.cpp',
                         'src/puttyGlyphNode.cpp',                        
+                        'src/puttyEmitterNode.cpp',                                                
                         ]
 
 # maya 8 exclusive stuff
@@ -37,13 +38,13 @@ mayaplugin_libpath = [ os.path.join( maya_location, 'lib' ) ]
 mayaplugin_libs = [ 'pthread', 'OpenMaya', 'OpenMayaRender', 'OpenMayaAnim', 'OpenMayaUI', 'OpenMayaFX' ]
 
 # compilation flags
-mayaplugin_cflags = [ '-O2', '-pthread', '-pipe', '-mcpu=pentium4' ]
+mayaplugin_cflags = [ '-O2', '-pthread', '-pipe', '-march=pentium4' ]
 mayaplugin_cppflags = mayaplugin_cflags + [ '-Wno-deprecated', '-fno-gnu-keywords', '--fast-math' ]
 mayaplugin_defines = [ '_BOOL', 'LINUX', 'REQUIRE_IOSTREAM', '__USER__="'+user+'"', '__HOST__="'+host+'"', '__PROJECTNAME__="'+project+'"', '__BUILDVERSION__="'+version+'"' ]
 
 # build environment
-mayaplugin_env = Environment( 	CC = 'gcc',
-							 	CXX = 'g++',
+mayaplugin_env = Environment( 	CC = '/rsp/apps/unsupported/gcc/Linux/4.0.2/bin/gcc',
+							 	CXX = '/rsp/apps/unsupported/gcc/Linux/4.0.2/bin/g++',
 							 	CFLAGS = mayaplugin_cflags, 
 							 	CXXFLAGS = mayaplugin_cppflags,
 							 	CPPDEFINES = mayaplugin_defines,

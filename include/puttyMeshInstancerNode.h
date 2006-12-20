@@ -23,6 +23,8 @@
 #include <maya/MTypeId.h>
 #include <maya/MItMeshPolygon.h>
 #include <maya/MFnArrayAttrsData.h>
+#include <maya/MMatrixArray.h>
+#include <vector.h>
 
 
 #define LEAD_COLOR				18	// green
@@ -31,7 +33,8 @@
 #define DORMANT_COLOR			4	// blue
 #define HILITE_COLOR			17	// pale blue
 
-
+#define ROT_UNIT_DEG	0
+#define ROT_UNIT_RAD	1
 
 /////////////////////////////////////////////////////////////////////
 //
@@ -47,6 +50,7 @@ class puttyMeshInstancer : public MPxLocatorNode
 	virtual void postConstructor();
 
 	virtual MStatus getVectorArray( MFnArrayAttrsData &particleFn, const MString vectorName, MVectorArray &vectorArray, bool &exists );                                             
+	virtual MStatus getDoubleArray( MFnArrayAttrsData &particleFn, const MString doubleName, MDoubleArray &doubleArray, bool &exists );                                                 
 	virtual MStatus computeInstanceData( const MPlug&, MDataBlock& block);    
 	virtual MStatus computeDisplayLists( const MPlug&, MDataBlock& block);    
 	virtual MStatus compute( const MPlug&, MDataBlock& block);
@@ -71,6 +75,8 @@ class puttyMeshInstancer : public MPxLocatorNode
     static  MObject aDisplayListsReady; // is everything prepared for drawing?
     static  MObject aInstanceDataReady; // is everything prepared for drawing?    
   	
+	static MObject aRotationUnit; // degrees or
+            
 	    static MObject aColorR; 
         static MObject aColorG; 
 	    static MObject aColorB; 
@@ -80,11 +86,15 @@ class puttyMeshInstancer : public MPxLocatorNode
 
     private:
    	virtual MStatus	buildDisplayList(MObject &meshObj, GLuint id );
-    GLuint mMeshDL;
+    MIntArray meshDisplayLists;
+    MIntArray mapIdToDisplayList;    
  
  	MVectorArray instancePosition;
 	MVectorArray instanceRotation;    
-	MVectorArray instanceScale;    
+	MVectorArray instanceScale; 
+       
+//    MMatrixArray instanceMatrix; 
+    
 	MVectorArray instanceColor; 
     float instanceOpacity;
     int instanceCount;

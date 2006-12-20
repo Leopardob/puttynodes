@@ -1,0 +1,147 @@
+proc string pe.getNode(string $nodeAttr)
+{
+	string $e[];
+	tokenize $nodeAttr "." $e;
+    return  $e[0];
+}
+
+proc string pe.getAttr(string $nodeAttr)
+{
+	string $e[];
+	tokenize $nodeAttr "." $e;
+    return  $e[1];
+}
+
+
+global proc int pe.getMultiNextAvailable( string $object, string $attr )
+{
+	string $attrList[] = `listAttr -m -st $attr $object`, $a;
+	int $index = 0;
+	if ( size( $attrList ) > 0 ) {
+		for ($a in $attrList) {
+			$buffer = string.tokenize( $a, "[]" );
+			if ( (int($buffer[1]) + 1) > $index ) $index = int($buffer[1]) + 1;
+		}
+	}
+	return $index;
+}
+
+global proc int pe.createArrayAttr(string $nodeAttr, string $name, string $type)
+{
+    string $node = getNode($nodeAttr);
+	string $arrayAttr = getAttr($nodeAttr);
+    // check if there already an attribute with the same name
+    // on the node, if yes, bail out
+    if (attributeExists($name, $node))
+    	return 0;
+                 
+    // create a dynamic array attribute on the node with the specific
+    // type
+    addAttr -ln $name -dt $type $node;
+    
+    // get the next available multiIndex on the
+    int $index = getMultiNextAvailable($node, $arrayAttr);
+    
+    // set the name attribute
+    setAttr ($node+"."+$arrayAttr+"["+$index+"]."+$arrayAttr+"Name") -type "string" $name;
+    
+    // connect the dynamic array to the multi array data
+    connectAttr -f ($node+"."+$name) ($node+"."+$arrayAttr+"["+$index+"]."+$arrayAttr+"Data");
+
+	return 1;
+}
+
+proc pe.deleteArrayAttr(string $attr, string $multiAttr)
+{
+    // remove the mulit
+    removeMultiInstance -b $multiAttr choice.input[100];
+
+	// the delete interface attribute
+    deleteAttr ($attr);
+}    
+  
+
+
+
+
+// get control name based on type
+proc string AEpeControlName(string $type)
+{
+	return "peArrayControl"+$type;
+}
+
+global proc AEpeArrayControlNew(string $nodeAttr, string $type)
+{
+	
+	string $textFieldName = AEpeControlName(pe.getAttr($nodeAttr));
+	
+	textFieldButtonGrp 
+		-label $type 
+		-buttonLabel "Create" 
+		-ann "Create an array of the specific type"
+		$textFieldName;
+                    
+        
+	AEpeArrayControlReplace($nodeAttr);	
+}
+
+global proc AEpeArrayControlReplace(string $nodeAttr)
+{
+	string $node = pe.getNode($nodeAttr);
+    string $attr = pe.getAttr($nodeAttr);
+	
+    string $textFieldName = AEpeControlName($attr);
+    
+    // attach functionality to the current
+        
+	// get list of all multi attributes, put them in a layout
+    string $list[] = `listAttr -m -st $attr $node`;
+    string $element;
+    for ($elemenent in $list)
+    {
+    	string $name = getAttr($node+"."+$element+"."+$attr+"Name");
+        
+    }
+    
+//	string $func = ctrlName($attr, "MelFunction");
+//	connectControl  -index 2 $func $attr;
+//	textFieldGrp -e -editable false $func	;
+
+}
+
+
+global proc AEpeArrayControl(string $attr, string $type)
+{
+	print $attr;
+    pritn $type;
+	editorTemplate -callCustom  "AEpeArrayControlNew" "AEpeArrayControlReplace" $attr ;
+	editorTemplate -suppress $attr;
+}
+
+////////////////////
+// the AE template
+
+global proc AEputtyEmitterTemplate(string $nodeName )
+{
+	editorTemplate -beginScrollLayout;
+	
+		editorTemplate -beginLayout "Double Array Data" -collapse 0 ;
+
+			AEpeArrayControl ("daInput", "doubleArray");		
+                                                            
+		editorTemplate -endLayout;
+
+		editorTemplate -beginLayout "Vector Array Data" -collapse 0 ;
+        
+			AEpeArrayControl ("vaInput", "vectorArray");					
+                                                            
+		editorTemplate -endLayout;
+	
+		editorTemplate -addExtraControls;
+
+		AEdependNodeTemplate $nodeName;
+
+	editorTemplate -endScrollLayout;
+}
+
+
