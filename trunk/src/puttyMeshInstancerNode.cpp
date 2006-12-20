@@ -45,6 +45,7 @@ MObject puttyMeshInstancer::aParticle;
 MObject puttyMeshInstancer::aDisplayListsReady;
 MObject puttyMeshInstancer::aMesh; 
 MObject puttyMeshInstancer::aInstanceDataReady;
+MObject puttyMeshInstancer::aRotationUnit;
   	
 	MObject puttyMeshInstancer::aColorR; 
 	MObject puttyMeshInstancer::aColorG; 
@@ -59,7 +60,6 @@ MObject puttyMeshInstancer::aOpacity;
 // constructor
 puttyMeshInstancer:: puttyMeshInstancer() 
 {
-	mMeshDL = glGenLists(1);
     instanceCount = 0;
 }
 
@@ -134,7 +134,18 @@ MStatus puttyMeshInstancer::initialize()
    	tAttr.setReadable(true) ;
    	tAttr.setWritable(true) ;
    	tAttr.setCached(false) ;
+   	tAttr.setArray(true) ;    
    	SYS_ERROR_CHECK( addAttribute(aMesh), "adding aMesh");
+
+    MFnEnumAttribute eAttr;        
+   
+    // type
+   	aRotationUnit = eAttr.create("rotationUnit", "ru", ROT_UNIT_RAD, &status);
+	eAttr.addField("radians",ROT_UNIT_RAD);        
+	eAttr.addField("degrees",ROT_UNIT_DEG);            
+  	eAttr.setKeyable(true);
+	eAttr.setStorable(true);
+	SYS_ERROR_CHECK( addAttribute( aRotationUnit ), "adding aRotationUnit" );
 
 
         aColorR = nAttr.create( "colorR", "colr", MFnNumericData::kFloat, 1.0 );
@@ -165,6 +176,7 @@ MStatus puttyMeshInstancer::initialize()
     SYS_ERROR_CHECK( addAttribute( aInstanceDataReady ), "adding aInstanceDataReady" ); 
 
 	attributeAffects(aMesh, aDisplayListsReady );          
+	attributeAffects(aRotationUnit, aInstanceDataReady );              
 	attributeAffects(aParticle, aInstanceDataReady );          
 	attributeAffects(aColor, aInstanceDataReady );              
     
@@ -243,17 +255,45 @@ MStatus	puttyMeshInstancer::computeDisplayLists( const MPlug&, MDataBlock& block
     bool readyForDrawing = false;
     
 	// get meshes and build display lists from them
-	MDataHandle meshDH = block.inputValue(aMesh);
-	MObject meshObj = meshDH.asMesh();
+    
+	MArrayDataHandle hMeshArray = block.inputArrayValue( aMesh, &status);
+	SYS_ERROR_CHECK(status, "ERROR in hMeshArray = block.inputArrayValue.\n");
 
-    if (meshObj != MObject::kNullObj)
+	hMeshArray.jumpToElement(0);
+    
+    int count = hMeshArray.elementCount();
+    meshDisplayLists = MIntArray(count);
+    mapIdToDisplayList = MIntArray(count);
+    
+    for (int i=0;i< < hMeshArray.elementCount();i++)
     {
-	 	status = buildDisplayList(meshObj, mMeshDL );
+    	// get handles to children from the current array element
+        MDataHandle hMeshElement = hMeshArray.inputValue(&status);
+		SYS_ERROR_CHECK(status, "hMeshElement = hMeshArray.inputValue.\n");    
+        
+		MObject meshObj = hMeshElement.asMesh();
+
+    	if (meshObj != MObject::kNullObj)
+	    {
+        	GLuint dlId = glGenLists(1);
+            
+		 	status = buildDisplayList(meshObj, dlId );
     	
-        if (!status.error())
-        	readyForDrawing = true;
-	}
-	        		
+        	if (status.error())
+            {
+            	readyForDrawing = false;
+				break;
+            }
+            else
+            {
+	        	meshDisplayLists[i] = dlId;
+                mapIdToDisplayList[i] = hMeshArray.currentIndex();
+                readyForDrawing = true;
+            }
+		}
+		
+        hMeshArray.next();        
+	}        		
 	// set output
     MDataHandle ready = block.outputValue(aDisplayListsReady);
 	ready.set(readyForDrawing);        	            
@@ -293,22 +333,35 @@ MStatus puttyMeshInstancer::getVectorArray(	MFnArrayAttrsData &particleFn,
             cerr << " da" << da.length() << " array" <<da;
          }
 
-  		if (arrayType == MFnArrayAttrsData::kIntArray)        
-            cerr << " ia";
-
-  		if (arrayType == MFnArrayAttrsData::kStringArray)        
-            cerr << " sa";
-
-  		if (arrayType == MFnArrayAttrsData::kLast)        
-            cerr << " last";
-        
-  		if (arrayType == MFnArrayAttrsData::kInvalid)        
-            cerr << " invalid";
-
-	}
-	cerr <<"\ngetvec "<<vectorName<<"  "<<exists;
   */
+  }
     return status;    
+}
+
+/*************************************************************************************/
+// function to extract double array information from an arrayAttr
+MStatus puttyMeshInstancer::getDoubleArray(	MFnArrayAttrsData &particleFn, 
+                                            const MString doubleName,
+                                            MDoubleArray &doubleArray,
+                                            bool &exists )
+{
+	MStatus status;
+    MFnArrayAttrsData::Type arrayType;
+
+
+	exists = false;
+    	
+    if (particleFn.checkArrayExist(doubleName, arrayType,  &status))
+    {
+  		if (arrayType == MFnArrayAttrsData::kDoubleArray)
+        {
+      		doubleArray = particleFn.doubleArray(doubleName, &status);
+            exists = true;
+
+	    }
+  	}
+  
+  	return status;    
 }
 
 
@@ -320,6 +373,10 @@ MStatus	puttyMeshInstancer::computeInstanceData( const MPlug&, MDataBlock& block
 {
 	MStatus status;
     bool mInstanceDataReady = false;
+    
+    // get rotationUnit  
+	MDataHandle rotDH = block.inputValue(aRotationUnit);    
+	short rotUnit = rotDH.asShort();
     
     // get color
 	MDataHandle colorDH = block.inputValue(aColor);    
@@ -354,13 +411,21 @@ MStatus	puttyMeshInstancer::computeInstanceData( const MPlug&, MDataBlock& block
             
 	        status = getVectorArray(particleFn, "rotation", instanceRotation, rotationExists);
         	if (rotationExists)
+            {
             	mInstanceDataReady =  (instanceRotation.length() == instanceCount);
+                
+                //convert rotation from radians to degrees
+                if (rotUnit == ROT_UNIT_RAD)
+	                for (int i=0;i<instanceRotation.length();i++)
+    	            	instanceRotation[i] *= 57.2957;
+                
+            }
             else
             	instanceRotation = MVectorArray(instanceCount,MVector::zero);
 
 	        if (mInstanceDataReady)
             {
-            	status = getVectorArray(particleFn, "scale", instanceScale, scaleExists);
+            	status = getVectorArray(particleFn, "scalePP", instanceScale, scaleExists);
 	        	if (scaleExists)
     	        	mInstanceDataReady =  (instanceScale.length() == instanceCount);
         	    else
@@ -369,14 +434,11 @@ MStatus	puttyMeshInstancer::computeInstanceData( const MPlug&, MDataBlock& block
             
             if (mInstanceDataReady)
             {
-//            	cerr <<"\ncolor!";
 		        status = getVectorArray(particleFn, "rgbPP", instanceColor, colorExists);
     	    	if (colorExists)
                 {
-//                	cerr <<"exists << " << instanceColor.length() << " " << instanceCount;
         	    	mInstanceDataReady =  (instanceColor.length() == instanceCount);
-                    
-                    }
+                }
 	            else
     	    		// get default value and build an array
         	    	instanceColor = MVectorArray(instanceCount,MVector(color.x,color.y,color.z));
@@ -384,6 +446,30 @@ MStatus	puttyMeshInstancer::computeInstanceData( const MPlug&, MDataBlock& block
 //				cerr << instanceColor;                    
 	        }
        	}
+        
+/*        // now put the whole shebang into a matrix array
+        cerr << "\nmake mat";
+        instanceMatrix.copy(MMatrixArray(instanceCount));
+        cerr << "\nfill mat";
+        for (int i=0;i<instanceCount;i++)
+        {
+	        MTransformationMatrix mat;
+            double help[3];
+            help[0] = instanceScale[i].x;
+            help[1] = instanceScale[i].y;
+            help[2] = instanceScale[i].z;
+            
+            mat.setScale(&instanceScale[i].x,MSpace::kWorld);
+
+		    help[0] = instanceRotation[i].x;
+            help[1] = instanceRotation[i].y;
+            help[2] = instanceRotation[i].z;
+                   
+            mat.setRotation(help, MTransformationMatrix::kXYZ);
+            mat.setTranslation(instancePosition[i], MSpace::kWorld);
+            instanceMatrix[i] = mat.asMatrix();
+        }
+*/
 	}
 
 	// set output
@@ -434,8 +520,16 @@ void puttyMeshInstancer::drawInstancesShaded()
     	glPushMatrix();
         GLfloat mat[] = {instanceColor[i].x,instanceColor[i].y,instanceColor[i].z, instanceOpacity};
     	glMaterialfv(GL_FRONT_AND_BACK,GL_DIFFUSE, mat);
-	    glTranslatef(instancePosition[i].x, instancePosition[i].y, instancePosition[i].z);            
-
+        
+//      glMultMatrixd( &(instanceMatrix[i].matrix[0][0]) );
+        
+	    glTranslated(instancePosition[i].x, instancePosition[i].y, 	instancePosition[i].z);                 
+	    glRotated	(instanceRotation[i].z, 0.0,0.0,1.0);
+		glRotated	(instanceRotation[i].y, 0.0,1.0,0.0);        
+	    glRotated	(instanceRotation[i].x, 1.0,0.0,0.0);
+        glScaled	(instanceScale[i].x, 	instanceScale[i].y, 	instanceScale[i].z);
+        
+                        
     	// call the list
    	    glCallList(mMeshDL);
    		glPopMatrix();
@@ -448,7 +542,8 @@ void puttyMeshInstancer::drawInstancesWireframe( M3dView & view , M3dView::Displ
 	glDisable(GL_LIGHTING);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);            
 
-	if (instanceWireframeOverShaded)
+	// do we need to draw the wireframe only in one color (cause it's selected)
+    if (instanceWireframeOverShaded)
     {
 		// choose the color for the wireframe based on the display status
     	M3dView::ColorTable activeColorTable = M3dView::kActiveColors;
@@ -470,7 +565,14 @@ void puttyMeshInstancer::drawInstancesWireframe( M3dView & view , M3dView::Displ
         for (int i=0; i < instanceCount; i++)
    		{
 	    	glPushMatrix();
-		    glTranslatef(instancePosition[i].x, instancePosition[i].y, instancePosition[i].z);            
+    
+        	
+	    	glTranslated(instancePosition[i].x, instancePosition[i].y, 	instancePosition[i].z);                 
+		    glRotated	(instanceRotation[i].z, 0.0,0.0,1.0);
+			glRotated	(instanceRotation[i].y, 0.0,1.0,0.0);        
+	    	glRotated	(instanceRotation[i].x, 1.0,0.0,0.0);
+	        glScaled	(instanceScale[i].x, 	instanceScale[i].y, 	instanceScale[i].z);
+
 
     		// call the list
    	    	glCallList(mMeshDL);
@@ -480,11 +582,19 @@ void puttyMeshInstancer::drawInstancesWireframe( M3dView & view , M3dView::Displ
     }
 	else
     {
+    	// draw the wireframe using the pp  colors
 	    for (int i=0; i < instanceCount; i++)
    		{
 	    	glPushMatrix();
     		glColor4f (instanceColor[i].x,instanceColor[i].y,instanceColor[i].z, instanceOpacity);
-		    glTranslatef(instancePosition[i].x, instancePosition[i].y, instancePosition[i].z);            
+	        
+		    glTranslated(instancePosition[i].x, instancePosition[i].y, 	instancePosition[i].z);                 
+	    	glRotated	(instanceRotation[i].z, 0.0,0.0,1.0);
+			glRotated	(instanceRotation[i].y, 0.0,1.0,0.0);        
+		    glRotated	(instanceRotation[i].x, 1.0,0.0,0.0);
+        	glScaled	(instanceScale[i].x, 	instanceScale[i].y, 	instanceScale[i].z);
+
+
 
     		// call the list
    	    	glCallList(mMeshDL);
@@ -528,19 +638,15 @@ void puttyMeshInstancer::draw( M3dView & view, const MDagPath & path, M3dView::D
     
    	view.beginGL(); 
 
-
 	// get the current opengl states, for restoring them later
 	// get the current polygon mode
 //	int polygonMode[2];
 //	glGetIntegerv(GL_POLYGON_MODE, polygonMode);    
     
-//    GLboolean lightingMode;
-//    glGetBooleanv(GL_LIGHTING, &lightingMode);    
-
-
+//   GLboolean lightingMode;
+//   glGetBooleanv(GL_LIGHTING, &lightingMode);    
 
 	// set up the opengl based on the current style and status
-//    glPushAttrib( GL_COLOR_BUFFER_BIT | GL_CURRENT_BIT | GL_ENABLE_BIT |  GL_PIXEL_MODE_BIT ); 
 	glPushAttrib( GL_ALL_ATTRIB_BITS);
 
     if ( instanceOpacity < 1.0f ) 
@@ -560,16 +666,12 @@ void puttyMeshInstancer::draw( M3dView & view, const MDagPath & path, M3dView::D
 	if (drawShaded)
 	    drawInstancesShaded();    
 
-
 	if (drawWireframe)
 	    drawInstancesWireframe(view,status);
     
-
 	// restore the opengl state
-//    glPopAttrib();
 // 	glPolygonMode(GL_FRONT, polygonMode[0]);
 //	glPolygonMode(GL_BACK,  polygonMode[1]);
-
 //    if (!lightingMode)
 //    	glDisable(GL_LIGHTING);
 
@@ -580,42 +682,3 @@ void puttyMeshInstancer::draw( M3dView & view, const MDagPath & path, M3dView::D
 }
 
 
-
-
-
-
-
-/*************************************************************************************/
-// draw
-/*
-
-  	
-  	  
-	cerr << "\npfn " << particleFn.list();
- 
-    // analyse what's in the array attrs        
-    MFnArrayAttrsData::Type arrayType;
-    
-    if ((particleFn.checkArrayExist("position", arrayType,  &status)) && (arrayType == MFnArrayAttrsData::kVectorArray))
-    {
-       	position = particleFn.vectorArray("position", &status);
-        if (position.length() >1)
-        {
-           	if (count==1)
-            	count = position.length();
-            else
-            	if (count != position.length())
-					return;
-        }
-    }  
-    else
-    {
-       	// TODO use the default
-        position = MVectorArray(1,MVector::zero);
-    }
-
-
-
-}
-
-*/

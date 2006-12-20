@@ -20,6 +20,7 @@
 #include "../include/puttyFieldNode.h"
 #include "../include/puttyMeshInstancerNode.h"
 #include "../include/puttyGlyphNode.h"
+#include "../include/puttyEmitterNode.h"
 
 #if MAYA_API_VERSION >= 800
 	#include "../include/puttyMapperNode.h"
@@ -51,12 +52,18 @@ MStatus initializePlugin( MObject obj )
 	status = plugin.registerNode( "puttyGlyph", puttyGlyph::id, &puttyGlyph::creator, &puttyGlyph::initialize,MPxNode::kLocatorNode );
     SYS_ERROR_CHECK(status, "registering  node 'puttyGlyph' failed!");
 
+	status = plugin.registerNode( "puttyEmitter", puttyEmitter::id, &puttyEmitter::creator, &puttyEmitter::initialize,MPxNode::kEmitterNode );
+	SYS_ERROR_CHECK(status, "registering  node 'puttyEmitter' failed!");   	
+
+
 #if MAYA_API_VERSION >= 800
 	status = plugin.registerNode( "puttyMapper", puttyMapper::id, &puttyMapper::creator, &puttyMapper::initialize,MPxNode::kParticleAttributeMapperNode );
     SYS_ERROR_CHECK(status, "registering  node 'puttyMapper' failed!");
 #endif // maya 8
 
-	return status;
+    
+    return status;
+    
 }
 
 MStatus uninitializePlugin( MObject obj )
@@ -77,7 +84,9 @@ MStatus uninitializePlugin( MObject obj )
 	status = plugin.deregisterNode( puttyGlyph::id );
 	SYS_ERROR_CHECK(status, "deregistering  node 'puttyGlyph' failed!");
 
-    
+ 	status = plugin.deregisterNode( puttyEmitter::id );
+	SYS_ERROR_CHECK(status, "deregistering  node 'puttyEmitter' failed!")
+       
     // nodes
 #if MAYA_API_VERSION >= 800
     status = plugin.deregisterNode( puttyMapper::id );
