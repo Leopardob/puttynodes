@@ -1,0 +1,266 @@
+proc string pmi.getNode(string $nodeAttr)
+{
+	string $e[];
+	tokenize $nodeAttr "." $e;
+    return  $e[0];
+}
+
+proc string pmi.getAttr(string $nodeAttr)
+{
+	string $e[];
+	tokenize $nodeAttr "." $e;
+    return  $e[1];
+}
+
+proc int pmi.getMultiNextAvailable( string $object, string $attr )
+{
+	string $attrList[] = `listAttr -m -st $attr $object`, $a;
+	int $index = 0;
+	if ( size( $attrList ) > 0 ) {
+		for ($a in $attrList) {
+			$buffer = string.tokenize( $a, "[]" );
+			if ( (int($buffer[1]) + 1) > $index ) $index = int($buffer[1]) + 1;
+		}
+	}
+	return $index;
+}
+
+proc pmi.fillScrollList(string $node, string $attr)
+{
+	// get all items from multi
+	string $attrList[] = `listAttr -m -st $attr $node`;
+	string $e;
+    
+    textScrollList -e -removeAll pmiScrollList;
+    
+    for($e in $attrList)
+    {
+		// get the id
+        string $t[];
+        tokenize $e "[" $t;
+        int $id = `substring $t[1] 1 (size($t[1])-1)`;
+
+    	// get the connected
+        string $conn;
+        if (`connectionInfo -isDestination ($node + "." + $e)`) 
+			$conn = `connectionInfo -sourceFromDestination ($node + "." + $e)`;
+        else
+			$conn = "no incoming connection";
+
+		string $entry = $id+": "+$conn;
+        
+        textScrollList -e -append $entry pmiScrollList;
+    }        
+}
+
+
+global proc pmi.addSelection(string $node, string $attr)
+{
+	// get the current selection from the selection list
+    string $sl[] = `ls -sl -dag -type "mesh" -noIntermediate`;
+    string $s;
+    for($s in $sl)
+    {
+    	int $id = pmi.getMultiNextAvailable( $node, $attr );
+        connectAttr ($s+".outMesh") ($node+"."+$attr+"["+$id+"]");
+    }
+    
+	pmi.fillScrollList($node,$attr);
+}
+
+global proc pmi.removeItems(string $node, string $attr)
+{
+	// get the current selection from the selection list
+    string $sl[] = `textScrollList -q -selectItem pmiScrollList`;
+    string $s;
+    for($s in $sl)
+    {
+		// get the item id
+        string $t[];
+        tokenize $s ":" $t;
+        int $id =  $t[0];
+		removeMultiInstance -b 1 ($node+"."+$attr+"["+$id+"]");
+    }
+    
+	pmi.fillScrollList($node,$attr);
+}
+
+
+global proc AEpmiControlNew(string $nodeAttr)
+{
+	text -label "Instanced Meshes";
+    textScrollList -numberOfRows 8 -allowMultiSelection true pmiScrollList;
+    rowLayout -numberOfColumns 2
+			-columnWidth2 190 190;
+            
+    button -label "Add Selection" pmiAddSelectionButton;
+	button -label "Remove Items" pmiRemoveItemsButton;    
+    setParent..;
+    
+	 AEpmiControlReplace($nodeAttr);
+}
+
+global proc AEpmiControlReplace(string $nodeAttr)
+{
+	string $node = pmi.getNode($nodeAttr);
+	string $attr = pmi.getAttr($nodeAttr);    
+    
+    // update the list
+    pmi.fillScrollList($node, $attr);
+    
+    // attach functionality to buttons
+    button -e -c ("pmi.addSelection(\""+$node+"\",\""+$attr+"\")") pmiAddSelectionButton;
+    button -e -c ("pmi.removeItems(\""+$node+"\",\""+$attr+"\")") pmiRemoveItemsButton;
+}
+
+
+global proc AEpmiControl(string $attr)
+{
+	editorTemplate -callCustom  ("AEpmiControlNew") ("AEpmiControlReplace") $attr ;
+	editorTemplate -suppress $attr;
+}
+
+
+
+global proc AEputtyMeshInstancerTemplate(string $nodeName )
+{
+	editorTemplate -beginScrollLayout;
+	
+		editorTemplate -beginLayout "Putty Mesh Instancer Settings" -collapse 0 ;
+
+			editorTemplate -addControl "rotationUnit";
+			editorTemplate -addControl "objectId";            
+			
+            editorTemplate -addSeparator;        
+                
+            editorTemplate -addControl "color";
+            editorTemplate -addControl "opacity";
+                                                 
+            editorTemplate -addSeparator;        
+            
+            AEpmiControl ("mesh");	
+            
+                                                                        
+editorTemplate -suppress "displayListsReady";
+editorTemplate -suppress "instanceDataReady";        
+editorTemplate -suppress "message";
+editorTemplate -suppress "caching";
+editorTemplate -suppress "isHistoricallyInteresting";
+editorTemplate -suppress "nodeState";
+editorTemplate -suppress "binMembership";
+editorTemplate -suppress "boundingBox";
+editorTemplate -suppress "boundingBoxMin";
+editorTemplate -suppress "boundingBoxMinX";
+editorTemplate -suppress "boundingBoxMinY";
+editorTemplate -suppress "boundingBoxMinZ";
+editorTemplate -suppress "boundingBoxMax";
+editorTemplate -suppress "boundingBoxMaxX";
+editorTemplate -suppress "boundingBoxMaxY";
+editorTemplate -suppress "boundingBoxMaxZ";
+editorTemplate -suppress "boundingBoxSize";
+editorTemplate -suppress "boundingBoxSizeX";
+editorTemplate -suppress "boundingBoxSizeY";
+editorTemplate -suppress "boundingBoxSizeZ";
+editorTemplate -suppress "center";
+editorTemplate -suppress "boundingBoxCenterX";
+editorTemplate -suppress "boundingBoxCenterY";
+editorTemplate -suppress "boundingBoxCenterZ";
+editorTemplate -suppress "matrix";
+editorTemplate -suppress "inverseMatrix";
+editorTemplate -suppress "worldMatrix";
+editorTemplate -suppress "worldInverseMatrix";
+editorTemplate -suppress "parentMatrix";
+editorTemplate -suppress "parentInverseMatrix";
+editorTemplate -suppress "visibility";
+editorTemplate -suppress "intermediateObject";
+editorTemplate -suppress "template";
+editorTemplate -suppress "ghosting";
+editorTemplate -suppress "instObjGroups";
+editorTemplate -suppress "instObjGroups.objectGroups";
+editorTemplate -suppress "instObjGroups.objectGroups.objectGrpCompList";
+editorTemplate -suppress "instObjGroups.objectGroups.objectGroupId";
+editorTemplate -suppress "instObjGroups.objectGroups.objectGrpColor";
+editorTemplate -suppress "useObjectColor";
+editorTemplate -suppress "objectColor";
+editorTemplate -suppress "drawOverride";
+editorTemplate -suppress "overrideDisplayType";
+editorTemplate -suppress "overrideLevelOfDetail";
+editorTemplate -suppress "overrideShading";
+editorTemplate -suppress "overrideTexturing";
+editorTemplate -suppress "overridePlayback";
+editorTemplate -suppress "overrideEnabled";
+editorTemplate -suppress "overrideVisibility";
+editorTemplate -suppress "overrideColor";
+editorTemplate -suppress "lodVisibility";
+editorTemplate -suppress "renderInfo";
+editorTemplate -suppress "identification";
+editorTemplate -suppress "layerRenderable";
+editorTemplate -suppress "layerOverrideColor";
+editorTemplate -suppress "renderLayerInfo";
+editorTemplate -suppress "renderLayerInfo.renderLayerId";
+editorTemplate -suppress "renderLayerInfo.renderLayerRenderable";
+editorTemplate -suppress "renderLayerInfo.renderLayerColor";
+editorTemplate -suppress "ghostingControl";
+editorTemplate -suppress "ghostCustomSteps";
+editorTemplate -suppress "ghostPreSteps";
+editorTemplate -suppress "ghostPostSteps";
+editorTemplate -suppress "ghostStepSize";
+editorTemplate -suppress "ghostFrames";
+editorTemplate -suppress "ghostRangeStart";
+editorTemplate -suppress "ghostRangeEnd";
+editorTemplate -suppress "ghostDriver";
+editorTemplate -suppress "renderType";
+editorTemplate -suppress "renderVolume";
+editorTemplate -suppress "visibleFraction";
+editorTemplate -suppress "motionBlur";
+editorTemplate -suppress "visibleInReflections";
+editorTemplate -suppress "visibleInRefractions";
+editorTemplate -suppress "castsShadows";
+editorTemplate -suppress "receiveShadows";
+editorTemplate -suppress "maxVisibilitySamplesOverride";
+editorTemplate -suppress "maxVisibilitySamples";
+editorTemplate -suppress "geometryAntialiasingOverride";
+editorTemplate -suppress "antialiasingLevel";
+editorTemplate -suppress "shadingSamplesOverride";
+editorTemplate -suppress "shadingSamples";
+editorTemplate -suppress "maxShadingSamples";
+editorTemplate -suppress "volumeSamplesOverride";
+editorTemplate -suppress "volumeSamples";
+editorTemplate -suppress "depthJitter";
+editorTemplate -suppress "ignoreSelfShadowing";
+editorTemplate -suppress "primaryVisibility";
+editorTemplate -suppress "referenceObject";
+editorTemplate -suppress "compInstObjGroups";
+editorTemplate -suppress "compInstObjGroups.compObjectGroups";
+editorTemplate -suppress "compInstObjGroups.compObjectGroups.compObjectGrpCompList";
+editorTemplate -suppress "compInstObjGroups.compObjectGroups.compObjectGroupId";
+editorTemplate -suppress "underWorldObject";
+editorTemplate -suppress "localPosition";
+editorTemplate -suppress "localPositionX";
+editorTemplate -suppress "localPositionY";
+editorTemplate -suppress "localPositionZ";
+editorTemplate -suppress "worldPosition";
+editorTemplate -suppress "worldPosition.worldPositionX";
+editorTemplate -suppress "worldPosition.worldPositionY";
+editorTemplate -suppress "worldPosition.worldPositionZ";
+editorTemplate -suppress "localScale";
+editorTemplate -suppress "localScaleX";
+editorTemplate -suppress "localScaleY";
+editorTemplate -suppress "localScaleZ";
+editorTemplate -suppress "mesh";
+editorTemplate -suppress "displayListsReady";
+editorTemplate -suppress "instanceDataReady";
+editorTemplate -suppress "particleData";
+
+
+		editorTemplate -endLayout;
+        
+        editorTemplate -addExtraControls;
+        
+		AEdependNodeTemplate $nodeName;
+
+
+	editorTemplate -endScrollLayout;
+}
+
+

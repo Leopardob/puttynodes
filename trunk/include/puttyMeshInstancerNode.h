@@ -76,6 +76,7 @@ class puttyMeshInstancer : public MPxLocatorNode
     static  MObject aInstanceDataReady; // is everything prepared for drawing?    
   	
 	static MObject aRotationUnit; // degrees or
+	static MObject aObjectId; // degrees or    
             
 	    static MObject aColorR; 
         static MObject aColorG; 
@@ -85,17 +86,18 @@ class puttyMeshInstancer : public MPxLocatorNode
     static MObject aOpacity; 
 
     private:
+    virtual void	deleteDisplayLists();
    	virtual MStatus	buildDisplayList(MObject &meshObj, GLuint id );
-    MIntArray meshDisplayLists;
-    MIntArray mapIdToDisplayList;    
+    MIntArray mapObjectIdToDisplayList;    
  
- 	MVectorArray instancePosition;
-	MVectorArray instanceRotation;    
-	MVectorArray instanceScale; 
-       
-//    MMatrixArray instanceMatrix; 
+ 	MVectorArray instancePosition;	// list of all instance positions
+	MVectorArray instanceRotation;    // rotations
+	MVectorArray instanceScale; 	// scale
+	MDoubleArray instanceVisibility;     
+	MIntArray 	 instanceDisplayList;         
     
 	MVectorArray instanceColor; 
+    
     float instanceOpacity;
     int instanceCount;
     

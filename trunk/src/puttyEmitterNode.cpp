@@ -248,7 +248,11 @@ MStatus puttyEmitter::compute(const MPlug& plug, MDataBlock& block)
             
         	MFnDoubleArrayData arrayFn(hDaElementData.data());
 	        MDoubleArray array = arrayFn.array(&status);
-			SYS_ERROR_CHECK(status, "ERROR in da array = arrayFn.array.\n"); 
+
+            if (status.error())
+            	return status;
+                
+//			SYS_ERROR_CHECK(status, "ERROR in da array = arrayFn.array.\n"); 
 	
 //            cerr << "\narray: " << array ;       
              
@@ -288,7 +292,10 @@ MStatus puttyEmitter::compute(const MPlug& plug, MDataBlock& block)
             
         	MFnVectorArrayData arrayFn(hVaElementData.data());
 	        MVectorArray array = arrayFn.array(&status);
-			SYS_ERROR_CHECK(status, "ERROR in da array = arrayFn.array.\n"); 
+            if (status.error())
+            	return status;
+
+//			SYS_ERROR_CHECK(status, "ERROR in da array = arrayFn.array.\n"); 
              
         	// put it all in the output array
 	        MVectorArray output  = fnOutput.vectorArray(name, &status);

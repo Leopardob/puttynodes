@@ -26,21 +26,26 @@ global proc int pe.getMultiNextAvailable( string $object, string $attr )
 	return $index;
 }
 
-global proc int pe.createArrayAttr(string $nodeAttr, string $name, string $type)
+global proc  pe.createArrayAttr(string $nodeAttr, string $tfname, string $type)
 {
-    string $node = getNode($nodeAttr);
-	string $arrayAttr = getAttr($nodeAttr);
+    string $node = pe.getNode($nodeAttr);
+    
+    string $name = `textFieldButtonGrp -q -text $tfname`;
+    
+	string $arrayAttr = pe.getAttr($nodeAttr);
     // check if there already an attribute with the same name
     // on the node, if yes, bail out
     if (attributeExists($name, $node))
-    	return 0;
+    	error ("attribute "+$name+" already exists!");
+        
+     textFieldButtonGrp -e -text "" $tfname   ;
                  
     // create a dynamic array attribute on the node with the specific
     // type
     addAttr -ln $name -dt $type $node;
     
     // get the next available multiIndex on the
-    int $index = getMultiNextAvailable($node, $arrayAttr);
+    int $index = pe.getMultiNextAvailable($node, $arrayAttr);
     
     // set the name attribute
     setAttr ($node+"."+$arrayAttr+"["+$index+"]."+$arrayAttr+"Name") -type "string" $name;
@@ -48,20 +53,23 @@ global proc int pe.createArrayAttr(string $nodeAttr, string $name, string $type)
     // connect the dynamic array to the multi array data
     connectAttr -f ($node+"."+$name) ($node+"."+$arrayAttr+"["+$index+"]."+$arrayAttr+"Data");
 
-	return 1;
+	AEpeArrayControlReplace("",$nodeAttr);
 }
 
-proc pe.deleteArrayAttr(string $attr, string $multiAttr)
+global proc pe.deleteArrayAttr(string $attr, string $multiAttr)
 {
     // remove the mulit
-    removeMultiInstance -b $multiAttr choice.input[100];
+    removeMultiInstance -b 1 $multiAttr;
 
 	// the delete interface attribute
     deleteAttr ($attr);
+    
+    // rebuild the layout
+    string $t[];
+    tokenize $multiAttr "[" $t;
+    AEpeArrayControlReplace("",$t[0]);
 }    
   
-
-
 
 
 // get control name based on type
@@ -70,51 +78,83 @@ proc string AEpeControlName(string $type)
 	return "peArrayControl"+$type;
 }
 
-global proc AEpeArrayControlNew(string $nodeAttr, string $type)
+global proc AEpeArrayControlNew( string $type, string $nodeAttr)
 {
+	string $textFieldName = AEpeControlName(pe.getAttr($nodeAttr)+"tf");
+	string $columName = AEpeControlName(pe.getAttr($nodeAttr)+"col");    
 	
-	string $textFieldName = AEpeControlName(pe.getAttr($nodeAttr));
-	
+
 	textFieldButtonGrp 
-		-label $type 
+		-label $type
+        -text "" 
 		-buttonLabel "Create" 
 		-ann "Create an array of the specific type"
+        -cw3 100 200 70
 		$textFieldName;
-                    
-        
-	AEpeArrayControlReplace($nodeAttr);	
+
+	separator;
+    
+	columnLayout $columName;
+                                
+	AEpeArrayControlReplace($type,$nodeAttr);	
 }
 
-global proc AEpeArrayControlReplace(string $nodeAttr)
+global proc AEpeArrayControlReplace(string $type, string $nodeAttr)
 {
 	string $node = pe.getNode($nodeAttr);
     string $attr = pe.getAttr($nodeAttr);
 	
-    string $textFieldName = AEpeControlName($attr);
+	string $textFieldName = AEpeControlName($attr+"tf");
+    string $command = ("pe.createArrayAttr "+$nodeAttr+" "+ $textFieldName+" "+$type);
+	textFieldButtonGrp -e -bc $command $textFieldName;
     
-    // attach functionality to the current
+	string $columName = AEpeControlName($attr+"col");      
+    
+    // attach functionality to the current stuff, fill it with values
+
+	// colum layout
+	// get list of current ui children, delete them
+
+    string $child[] = `columnLayout -q -childArray $columName`;
+    string $c;
+    for ($c in $child)
+	    deleteUI -lay $c;
+    
         
 	// get list of all multi attributes, put them in a layout
     string $list[] = `listAttr -m -st $attr $node`;
     string $element;
-    for ($elemenent in $list)
+
+
+	setParent $columName;
+    
+    
+    for ($element in $list)
     {
-    	string $name = getAttr($node+"."+$element+"."+$attr+"Name");
+	    rowColumnLayout -numberOfColumns 3 
+			-columnWidth 1 100
+			-columnWidth 2 200
+			-columnWidth 3 70;
+
+    	text -l "";
         
+    	string $name = getAttr($node+"."+$element+"."+$attr+"Name");
+        textField 
+        	-editable false
+            -text $name;       
+            
+        string $cmd = ("pe.deleteArrayAttr "+($node+"."+$name)+" "+($node+"."+$element));
+        button -label "Delete" -c $cmd;
+        setParent $columName ;
     }
     
-//	string $func = ctrlName($attr, "MelFunction");
-//	connectControl  -index 2 $func $attr;
-//	textFieldGrp -e -editable false $func	;
 
 }
 
 
 global proc AEpeArrayControl(string $attr, string $type)
 {
-	print $attr;
-    pritn $type;
-	editorTemplate -callCustom  "AEpeArrayControlNew" "AEpeArrayControlReplace" $attr ;
+	editorTemplate -callCustom  ("AEpeArrayControlNew "+$type) ("AEpeArrayControlReplace "+$type) $attr ;
 	editorTemplate -suppress $attr;
 }
 
@@ -141,7 +181,263 @@ global proc AEputtyEmitterTemplate(string $nodeName )
 
 		AEdependNodeTemplate $nodeName;
 
-	editorTemplate -endScrollLayout;
+	editorTemplate -endScrollLayout;editorTemplate -suppress "message";
+    
+editorTemplate -suppress "binMembership";
+editorTemplate -suppress "boundingBox";
+editorTemplate -suppress "boundingBoxMin";
+editorTemplate -suppress "boundingBoxMinX";
+editorTemplate -suppress "boundingBoxMinY";
+editorTemplate -suppress "boundingBoxMinZ";
+editorTemplate -suppress "boundingBoxMax";
+editorTemplate -suppress "boundingBoxMaxX";
+editorTemplate -suppress "boundingBoxMaxY";
+editorTemplate -suppress "boundingBoxMaxZ";
+editorTemplate -suppress "boundingBoxSize";
+editorTemplate -suppress "boundingBoxSizeX";
+editorTemplate -suppress "boundingBoxSizeY";
+editorTemplate -suppress "boundingBoxSizeZ";
+editorTemplate -suppress "center";
+editorTemplate -suppress "boundingBoxCenterX";
+editorTemplate -suppress "boundingBoxCenterY";
+editorTemplate -suppress "boundingBoxCenterZ";
+editorTemplate -suppress "matrix";
+editorTemplate -suppress "inverseMatrix";
+editorTemplate -suppress "worldMatrix";
+editorTemplate -suppress "worldInverseMatrix";
+editorTemplate -suppress "parentMatrix";
+editorTemplate -suppress "parentInverseMatrix";
+editorTemplate -suppress "visibility";
+editorTemplate -suppress "intermediateObject";
+editorTemplate -suppress "template";
+editorTemplate -suppress "ghosting";
+editorTemplate -suppress "instObjGroups";
+editorTemplate -suppress "instObjGroups.objectGroups";
+editorTemplate -suppress "instObjGroups.objectGroups.objectGrpCompList";
+editorTemplate -suppress "instObjGroups.objectGroups.objectGroupId";
+editorTemplate -suppress "instObjGroups.objectGroups.objectGrpColor";
+editorTemplate -suppress "useObjectColor";
+editorTemplate -suppress "objectColor";
+editorTemplate -suppress "drawOverride";
+editorTemplate -suppress "overrideDisplayType";
+editorTemplate -suppress "overrideLevelOfDetail";
+editorTemplate -suppress "overrideShading";
+editorTemplate -suppress "overrideTexturing";
+editorTemplate -suppress "overridePlayback";
+editorTemplate -suppress "overrideEnabled";
+editorTemplate -suppress "overrideVisibility";
+editorTemplate -suppress "overrideColor";
+editorTemplate -suppress "lodVisibility";
+editorTemplate -suppress "renderInfo";
+editorTemplate -suppress "identification";
+editorTemplate -suppress "layerRenderable";
+editorTemplate -suppress "layerOverrideColor";
+editorTemplate -suppress "renderLayerInfo";
+editorTemplate -suppress "renderLayerInfo.renderLayerId";
+editorTemplate -suppress "renderLayerInfo.renderLayerRenderable";
+editorTemplate -suppress "renderLayerInfo.renderLayerColor";
+editorTemplate -suppress "ghostingControl";
+editorTemplate -suppress "ghostCustomSteps";
+editorTemplate -suppress "ghostPreSteps";
+editorTemplate -suppress "ghostPostSteps";
+editorTemplate -suppress "ghostStepSize";
+editorTemplate -suppress "ghostFrames";
+editorTemplate -suppress "ghostRangeStart";
+editorTemplate -suppress "ghostRangeEnd";
+editorTemplate -suppress "ghostDriver";
+editorTemplate -suppress "translate";
+editorTemplate -suppress "translateX";
+editorTemplate -suppress "translateY";
+editorTemplate -suppress "translateZ";
+editorTemplate -suppress "rotate";
+editorTemplate -suppress "rotateX";
+editorTemplate -suppress "rotateY";
+editorTemplate -suppress "rotateZ";
+editorTemplate -suppress "rotateOrder";
+editorTemplate -suppress "scale";
+editorTemplate -suppress "scaleX";
+editorTemplate -suppress "scaleY";
+editorTemplate -suppress "scaleZ";
+editorTemplate -suppress "shear";
+editorTemplate -suppress "shearXY";
+editorTemplate -suppress "shearXZ";
+editorTemplate -suppress "shearYZ";
+editorTemplate -suppress "rotatePivot";
+editorTemplate -suppress "rotatePivotX";
+editorTemplate -suppress "rotatePivotY";
+editorTemplate -suppress "rotatePivotZ";
+editorTemplate -suppress "rotatePivotTranslate";
+editorTemplate -suppress "rotatePivotTranslateX";
+editorTemplate -suppress "rotatePivotTranslateY";
+editorTemplate -suppress "rotatePivotTranslateZ";
+editorTemplate -suppress "scalePivot";
+editorTemplate -suppress "scalePivotX";
+editorTemplate -suppress "scalePivotY";
+editorTemplate -suppress "scalePivotZ";
+editorTemplate -suppress "scalePivotTranslate";
+editorTemplate -suppress "scalePivotTranslateX";
+editorTemplate -suppress "scalePivotTranslateY";
+editorTemplate -suppress "scalePivotTranslateZ";
+editorTemplate -suppress "rotateAxis";
+editorTemplate -suppress "rotateAxisX";
+editorTemplate -suppress "rotateAxisY";
+editorTemplate -suppress "rotateAxisZ";
+editorTemplate -suppress "transMinusRotatePivot";
+editorTemplate -suppress "transMinusRotatePivotX";
+editorTemplate -suppress "transMinusRotatePivotY";
+editorTemplate -suppress "transMinusRotatePivotZ";
+editorTemplate -suppress "minTransLimit";
+editorTemplate -suppress "minTransXLimit";
+editorTemplate -suppress "minTransYLimit";
+editorTemplate -suppress "minTransZLimit";
+editorTemplate -suppress "maxTransLimit";
+editorTemplate -suppress "maxTransXLimit";
+editorTemplate -suppress "maxTransYLimit";
+editorTemplate -suppress "maxTransZLimit";
+editorTemplate -suppress "minTransLimitEnable";
+editorTemplate -suppress "minTransXLimitEnable";
+editorTemplate -suppress "minTransYLimitEnable";
+editorTemplate -suppress "minTransZLimitEnable";
+editorTemplate -suppress "maxTransLimitEnable";
+editorTemplate -suppress "maxTransXLimitEnable";
+editorTemplate -suppress "maxTransYLimitEnable";
+editorTemplate -suppress "maxTransZLimitEnable";
+editorTemplate -suppress "minRotLimit";
+editorTemplate -suppress "minRotXLimit";
+editorTemplate -suppress "minRotYLimit";
+editorTemplate -suppress "minRotZLimit";
+editorTemplate -suppress "maxRotLimit";
+editorTemplate -suppress "maxRotXLimit";
+editorTemplate -suppress "maxRotYLimit";
+editorTemplate -suppress "maxRotZLimit";
+editorTemplate -suppress "minRotLimitEnable";
+editorTemplate -suppress "minRotXLimitEnable";
+editorTemplate -suppress "minRotYLimitEnable";
+editorTemplate -suppress "minRotZLimitEnable";
+editorTemplate -suppress "maxRotLimitEnable";
+editorTemplate -suppress "maxRotXLimitEnable";
+editorTemplate -suppress "maxRotYLimitEnable";
+editorTemplate -suppress "maxRotZLimitEnable";
+editorTemplate -suppress "minScaleLimit";
+editorTemplate -suppress "minScaleXLimit";
+editorTemplate -suppress "minScaleYLimit";
+editorTemplate -suppress "minScaleZLimit";
+editorTemplate -suppress "maxScaleLimit";
+editorTemplate -suppress "maxScaleXLimit";
+editorTemplate -suppress "maxScaleYLimit";
+editorTemplate -suppress "maxScaleZLimit";
+editorTemplate -suppress "minScaleLimitEnable";
+editorTemplate -suppress "minScaleXLimitEnable";
+editorTemplate -suppress "minScaleYLimitEnable";
+editorTemplate -suppress "minScaleZLimitEnable";
+editorTemplate -suppress "maxScaleLimitEnable";
+editorTemplate -suppress "maxScaleXLimitEnable";
+editorTemplate -suppress "maxScaleYLimitEnable";
+editorTemplate -suppress "maxScaleZLimitEnable";
+editorTemplate -suppress "geometry";
+editorTemplate -suppress "xformMatrix";
+editorTemplate -suppress "selectHandle";
+editorTemplate -suppress "selectHandleX";
+editorTemplate -suppress "selectHandleY";
+editorTemplate -suppress "selectHandleZ";
+editorTemplate -suppress "inheritsTransform";
+editorTemplate -suppress "displayHandle";
+editorTemplate -suppress "displayScalePivot";
+editorTemplate -suppress "displayRotatePivot";
+editorTemplate -suppress "displayLocalAxis";
+editorTemplate -suppress "dynamics";
+editorTemplate -suppress "showManipDefault";
+editorTemplate -suppress "specifiedManipLocation";
+editorTemplate -suppress "rotateQuaternion";
+editorTemplate -suppress "rotateQuaternionX";
+editorTemplate -suppress "rotateQuaternionY";
+editorTemplate -suppress "rotateQuaternionZ";
+editorTemplate -suppress "rotateQuaternionW";
+editorTemplate -suppress "rotationInterpolation";
+editorTemplate -suppress "mentalRayControls";
+editorTemplate -suppress "miDeriveFromMaya";
+editorTemplate -suppress "miHide";
+editorTemplate -suppress "miVisible";
+editorTemplate -suppress "miTrace";
+editorTemplate -suppress "miShadow";
+editorTemplate -suppress "miCaustic";
+editorTemplate -suppress "miGlobillum";
+editorTemplate -suppress "miExportGeoShader";
+editorTemplate -suppress "miGeoShader";
+editorTemplate -suppress "owner";
+editorTemplate -suppress "fromWhere";
+editorTemplate -suppress "subsetId";
+editorTemplate -suppress "positional";
+editorTemplate -suppress "ownerCentroid";
+editorTemplate -suppress "ownerCentroidX";
+editorTemplate -suppress "ownerCentroidY";
+editorTemplate -suppress "ownerCentroidZ";
+editorTemplate -suppress "ownerPosData";
+editorTemplate -suppress "ownerVelData";
+editorTemplate -suppress "emitterType";
+editorTemplate -suppress "rate";
+editorTemplate -suppress "scaleRateByObjectSize";
+editorTemplate -suppress "useRatePP";
+editorTemplate -suppress "needParentUV";
+editorTemplate -suppress "cycleEmission";
+editorTemplate -suppress "cycleInterval";
+editorTemplate -suppress "deltaTimeCycle";
+editorTemplate -suppress "maxDistance";
+editorTemplate -suppress "minDistance";
+editorTemplate -suppress "direction";
+editorTemplate -suppress "directionX";
+editorTemplate -suppress "directionY";
+editorTemplate -suppress "directionZ";
+editorTemplate -suppress "spread";
+editorTemplate -suppress "speed";
+editorTemplate -suppress "speedRandom";
+editorTemplate -suppress "tangentSpeed";
+editorTemplate -suppress "normalSpeed";
+editorTemplate -suppress "currentTime";
+editorTemplate -suppress "inheritFactor";
+editorTemplate -suppress "isFull";
+editorTemplate -suppress "startTime";
+editorTemplate -suppress "deltaTime";
+editorTemplate -suppress "emitCountRemainder";
+editorTemplate -suppress "ratePP";
+editorTemplate -suppress "parentId";
+editorTemplate -suppress "sweptGeometry";
+editorTemplate -suppress "output";
+editorTemplate -suppress "seed";
+editorTemplate -suppress "randState";
+editorTemplate -suppress "randState.randStateX";
+editorTemplate -suppress "randState.randStateY";
+editorTemplate -suppress "randState.randStateZ";
+editorTemplate -suppress "enableTextureRate";
+editorTemplate -suppress "textureRate";
+editorTemplate -suppress "textureRateR";
+editorTemplate -suppress "textureRateG";
+editorTemplate -suppress "textureRateB";
+editorTemplate -suppress "emitFromDark";
+editorTemplate -suppress "inheritColor";
+editorTemplate -suppress "inheritOpacity";
+editorTemplate -suppress "invertOpacity";
+editorTemplate -suppress "useLuminance";
+editorTemplate -suppress "particleColor";
+editorTemplate -suppress "particleColorR";
+editorTemplate -suppress "particleColorG";
+editorTemplate -suppress "particleColorB";
+editorTemplate -suppress "volumeShape";
+editorTemplate -suppress "volumeOffset";
+editorTemplate -suppress "volumeOffsetX";
+editorTemplate -suppress "volumeOffsetY";
+editorTemplate -suppress "volumeOffsetZ";
+editorTemplate -suppress "volumeEfficiency";
+editorTemplate -suppress "volumeSweep";
+editorTemplate -suppress "sectionRadius";
+editorTemplate -suppress "awayFromCenter";
+editorTemplate -suppress "awayFromAxis";
+editorTemplate -suppress "alongAxis";
+editorTemplate -suppress "aroundAxis";
+editorTemplate -suppress "randomDirection";
+editorTemplate -suppress "directionalSpeed";
+editorTemplate -suppress "scaleSpeedBySize";
+editorTemplate -suppress "displaySpeed";
 }
 
 
