@@ -46,6 +46,7 @@ MObject puttyMeshInstancer::aDisplayListsReady;
 MObject puttyMeshInstancer::aMesh; 
 MObject puttyMeshInstancer::aInstanceDataReady;
 MObject puttyMeshInstancer::aRotationUnit;
+MObject puttyMeshInstancer::aObjectId;
   	
 	MObject puttyMeshInstancer::aColorR; 
 	MObject puttyMeshInstancer::aColorG; 
@@ -67,6 +68,7 @@ puttyMeshInstancer:: puttyMeshInstancer()
 // destructor
 puttyMeshInstancer::~puttyMeshInstancer() 
 {
+	deleteDisplayLists();
 }
 
 /*************************************************************************************/
@@ -95,9 +97,16 @@ bool puttyMeshInstancer::isBounded() const
 MBoundingBox puttyMeshInstancer::boundingBox() const
 {
 	MBoundingBox result;	
-
-	for (int i=0;i<instanceCount;i++)    
-		result.expand( instancePosition[i]);
+    // if no instances are present, generate a dummy bounding box
+    // so the draw method gets requested
+    if (instanceCount ==0)
+    {
+    	result.expand(MPoint(0.5,0.5,0.5));
+		result.expand(MPoint(-0.5,-0.5,-0.5));        
+   	}
+	else
+		for (int i=0;i<instanceCount;i++)    
+			result.expand( instancePosition[i]);
 
     return result;
 }
@@ -147,6 +156,12 @@ MStatus puttyMeshInstancer::initialize()
 	eAttr.setStorable(true);
 	SYS_ERROR_CHECK( addAttribute( aRotationUnit ), "adding aRotationUnit" );
 
+    aObjectId = nAttr.create( "objectId", "oid", MFnNumericData::kInt, 0 );
+    nAttr.setMin(0);
+	nAttr.setSoftMax(10);    
+    nAttr.setKeyable(true);
+    SYS_ERROR_CHECK( addAttribute(aObjectId), "adding aObjectId");
+
 
         aColorR = nAttr.create( "colorR", "colr", MFnNumericData::kFloat, 1.0 );
         aColorG = nAttr.create( "colorG", "colg", MFnNumericData::kFloat, 0.0 );
@@ -171,7 +186,7 @@ MStatus puttyMeshInstancer::initialize()
     nAttr.setStorable(false) ;
     SYS_ERROR_CHECK( addAttribute( aDisplayListsReady ), "adding aDisplayListsReady" ); 
 
-    aInstanceDataReady = nAttr.create("instanceDataReadt", "idr", MFnNumericData::kBoolean, false);
+    aInstanceDataReady = nAttr.create("instanceDataReady", "idr", MFnNumericData::kBoolean, false);
     nAttr.setStorable(false) ;
     SYS_ERROR_CHECK( addAttribute( aInstanceDataReady ), "adding aInstanceDataReady" ); 
 
@@ -179,8 +194,22 @@ MStatus puttyMeshInstancer::initialize()
 	attributeAffects(aRotationUnit, aInstanceDataReady );              
 	attributeAffects(aParticle, aInstanceDataReady );          
 	attributeAffects(aColor, aInstanceDataReady );              
+	attributeAffects(aObjectId, aInstanceDataReady );                  
     
 	return MS::kSuccess;
+}
+
+
+
+/*************************************************************************************/
+// delete all display lists
+void	puttyMeshInstancer::deleteDisplayLists()
+{
+	for (int i=0;i<mapObjectIdToDisplayList.length();i++)
+    {
+    	if (mapObjectIdToDisplayList[i])
+        	glDeleteLists(mapObjectIdToDisplayList[i],1);
+    }
 }
 
 
@@ -252,20 +281,23 @@ MStatus	puttyMeshInstancer::buildDisplayList(MObject &meshObj, GLuint id )
 MStatus	puttyMeshInstancer::computeDisplayLists( const MPlug&, MDataBlock& block)
 {
 	MStatus status = MS::kSuccess;
-    bool readyForDrawing = false;
+    bool readyForDrawing = true;
+    const int maxId = 9999;
     
 	// get meshes and build display lists from them
-    
 	MArrayDataHandle hMeshArray = block.inputArrayValue( aMesh, &status);
 	SYS_ERROR_CHECK(status, "ERROR in hMeshArray = block.inputArrayValue.\n");
 
+
+	//delete all previously declared display lists
+    deleteDisplayLists();
+    
 	hMeshArray.jumpToElement(0);
     
     int count = hMeshArray.elementCount();
-    meshDisplayLists = MIntArray(count);
-    mapIdToDisplayList = MIntArray(count);
+    mapObjectIdToDisplayList = MIntArray(count);
     
-    for (int i=0;i< < hMeshArray.elementCount();i++)
+    for (int i=0;i< hMeshArray.elementCount();i++)
     {
     	// get handles to children from the current array element
         MDataHandle hMeshElement = hMeshArray.inputValue(&status);
@@ -275,10 +307,11 @@ MStatus	puttyMeshInstancer::computeDisplayLists( const MPlug&, MDataBlock& block
 
     	if (meshObj != MObject::kNullObj)
 	    {
+			// build a display list from the current mesh
         	GLuint dlId = glGenLists(1);
-            
 		 	status = buildDisplayList(meshObj, dlId );
     	
+        	// if successfull add the display list to the object id > display list map
         	if (status.error())
             {
             	readyForDrawing = false;
@@ -286,14 +319,33 @@ MStatus	puttyMeshInstancer::computeDisplayLists( const MPlug&, MDataBlock& block
             }
             else
             {
-	        	meshDisplayLists[i] = dlId;
-                mapIdToDisplayList[i] = hMeshArray.currentIndex();
-                readyForDrawing = true;
+	        	int objectId = hMeshArray.elementIndex();
+				if (objectId >=  mapObjectIdToDisplayList.length())
+                {
+                	// expand the display list map with the current objectId
+                    // valid objectIds are limited to 10000
+                	if (objectId <= maxId)
+                    {
+                    	for (int i= mapObjectIdToDisplayList.length(); i < objectId; i++)
+		                {
+                        	mapObjectIdToDisplayList.append(0);
+                        }
+                        
+                        mapObjectIdToDisplayList.append(dlId);
+                    }
+                }
+                else
+                {
+	                // add the display list to the map
+    	            mapObjectIdToDisplayList[objectId] = dlId;
+                }
             }
 		}
 		
         hMeshArray.next();        
 	}        		
+	
+//    cerr <<"\n-------oid2dl:\n"<<mapObjectIdToDisplayList;
 	// set output
     MDataHandle ready = block.outputValue(aDisplayListsReady);
 	ready.set(readyForDrawing);        	            
@@ -318,22 +370,14 @@ MStatus puttyMeshInstancer::getVectorArray(	MFnArrayAttrsData &particleFn,
     	
     if (particleFn.checkArrayExist(vectorName, arrayType,  &status))
     {
-//    	cerr << "\nbla!"<<vectorName;
+
   		if (arrayType == MFnArrayAttrsData::kVectorArray)
         {
       		vectorArray = particleFn.vectorArray(vectorName, &status);
             exists = true;
-//            cerr << " va";
-	    }
-/*        
-  		if (arrayType == MFnArrayAttrsData::kDoubleArray)        
-        {
-           MDoubleArray da = particleFn.doubleArray(vectorName, &status);
-           
-            cerr << " da" << da.length() << " array" <<da;
-         }
 
-  */
+	    }
+
   }
     return status;    
 }
@@ -382,7 +426,11 @@ MStatus	puttyMeshInstancer::computeInstanceData( const MPlug&, MDataBlock& block
 	MDataHandle colorDH = block.inputValue(aColor);    
 	MFloatVector color = colorDH.asFloatVector();
     
-    // get object from the data handle
+    // get default objectId
+	MDataHandle objectIdDH = block.inputValue(aObjectId);    
+    int defaultObjectId = objectIdDH.asInt();
+
+    // get particle object from the data handle
     MDataHandle particleDH = block.inputValue(aParticle);
 	MObject particleObj = particleDH.data();
 
@@ -392,13 +440,16 @@ MStatus	puttyMeshInstancer::computeInstanceData( const MPlug&, MDataBlock& block
 //	cerr<< "\ncomiin " <<	particleFn.list();
     
     if (status.error()) 
-    	cerr<<"\ncan't get particle fn";
+//    	cerr<<"\ncan't get particle fn";
+{}
     else
     {
    		bool positionExists;
    		bool rotationExists;
    		bool scaleExists ;                
    		bool colorExists;                
+        bool objectIdExists;                
+        bool visibilityExists;                        
                 
         MFnArrayAttrsData::Type arrayType;
 
@@ -409,6 +460,7 @@ MStatus	puttyMeshInstancer::computeInstanceData( const MPlug&, MDataBlock& block
        		instanceCount = instancePosition.length();                                           
 			mInstanceDataReady = true;
             
+			// rotation
 	        status = getVectorArray(particleFn, "rotation", instanceRotation, rotationExists);
         	if (rotationExists)
             {
@@ -422,7 +474,8 @@ MStatus	puttyMeshInstancer::computeInstanceData( const MPlug&, MDataBlock& block
             }
             else
             	instanceRotation = MVectorArray(instanceCount,MVector::zero);
-
+                
+			// scale
 	        if (mInstanceDataReady)
             {
             	status = getVectorArray(particleFn, "scalePP", instanceScale, scaleExists);
@@ -432,6 +485,7 @@ MStatus	puttyMeshInstancer::computeInstanceData( const MPlug&, MDataBlock& block
             		instanceScale = MVectorArray(instanceCount,MVector(1,1,1));
 			}
             
+            // color
             if (mInstanceDataReady)
             {
 		        status = getVectorArray(particleFn, "rgbPP", instanceColor, colorExists);
@@ -442,15 +496,61 @@ MStatus	puttyMeshInstancer::computeInstanceData( const MPlug&, MDataBlock& block
 	            else
     	    		// get default value and build an array
         	    	instanceColor = MVectorArray(instanceCount,MVector(color.x,color.y,color.z));
-                    
-//				cerr << instanceColor;                    
 	        }
+            
+            // visibility
+            if (mInstanceDataReady)
+            {
+		        status = getDoubleArray(particleFn, "visibility", instanceVisibility, visibilityExists);
+    	    	if (visibilityExists)
+                {
+        	    	mInstanceDataReady =  (instanceVisibility.length() == instanceCount);
+                }
+	            else
+                	// everything is visible by default
+                    // todo, maybe add a percentage?
+        	    	instanceVisibility = MDoubleArray(instanceCount,1.0);
+	        }
+            
+                        
+            // object id
+            // in here determine which display list every instance will use
+            if (mInstanceDataReady)
+            {
+            	MDoubleArray objectId;
+		        status = getDoubleArray(particleFn, "objectId", objectId, objectIdExists);
+    	    	if (objectIdExists)
+                {
+        	    	mInstanceDataReady =  (objectId.length() == instanceCount);
+                    if (mInstanceDataReady)
+                    {
+   	                    instanceDisplayList = MIntArray(instanceCount);
+                    	int max = mapObjectIdToDisplayList.length()-1;
+						for (int i=0;i<instanceCount;i++)
+                        {
+                        	// if an id doesn't have a valid instance id, then don't show it
+                        	int id = int(objectId[i]);
+	                        if (id<0 || id >max)
+                            	instanceVisibility[i] = 0.0;
+                            else
+                            	instanceDisplayList[i] = instanceVisibility[i] = mapObjectIdToDisplayList[id];
+                        }
+                    
+                    }
+                }
+	            else
+                {
+    	    		// get default value and build an array
+                    instanceDisplayList = MIntArray(instanceCount,mapObjectIdToDisplayList[defaultObjectId]);
+                }
+	        }
+            
+            
        	}
         
-/*        // now put the whole shebang into a matrix array
-        cerr << "\nmake mat";
+/*      // now put the whole shebang into a matrix array
         instanceMatrix.copy(MMatrixArray(instanceCount));
-        cerr << "\nfill mat";
+        
         for (int i=0;i<instanceCount;i++)
         {
 	        MTransformationMatrix mat;
@@ -485,14 +585,12 @@ MStatus	puttyMeshInstancer::compute( const MPlug& plug, MDataBlock& block )
 {  
     if (plug == aDisplayListsReady)
     {
-//    	cerr <<"\ncomp dl";
 		return computeDisplayLists(plug, block);
-        }
+    }
 	else if (plug == aInstanceDataReady)
     {
-//        cerr <<"\ncomp id";
     	return computeInstanceData(plug, block);
-        }
+    }
 	else
 	    return MS::kUnknownParameter;
 }
@@ -517,22 +615,24 @@ void puttyMeshInstancer::drawInstancesShaded()
     
     for (int i=0; i < instanceCount; i++)
    	{
-    	glPushMatrix();
-        GLfloat mat[] = {instanceColor[i].x,instanceColor[i].y,instanceColor[i].z, instanceOpacity};
-    	glMaterialfv(GL_FRONT_AND_BACK,GL_DIFFUSE, mat);
+    	if (instanceVisibility[i])
+        {
+	    	glPushMatrix();
+    	    GLfloat mat[] = {instanceColor[i].x,instanceColor[i].y,instanceColor[i].z, instanceOpacity};
+    		glMaterialfv(GL_FRONT_AND_BACK,GL_DIFFUSE, mat);
         
-//      glMultMatrixd( &(instanceMatrix[i].matrix[0][0]) );
+	//      glMultMatrixd( &(instanceMatrix[i].matrix[0][0]) );
         
-	    glTranslated(instancePosition[i].x, instancePosition[i].y, 	instancePosition[i].z);                 
-	    glRotated	(instanceRotation[i].z, 0.0,0.0,1.0);
-		glRotated	(instanceRotation[i].y, 0.0,1.0,0.0);        
-	    glRotated	(instanceRotation[i].x, 1.0,0.0,0.0);
-        glScaled	(instanceScale[i].x, 	instanceScale[i].y, 	instanceScale[i].z);
-        
+		    glTranslated(instancePosition[i].x, instancePosition[i].y, 	instancePosition[i].z);                 
+		    glRotated	(instanceRotation[i].z, 0.0,0.0,1.0);
+			glRotated	(instanceRotation[i].y, 0.0,1.0,0.0);        
+	    	glRotated	(instanceRotation[i].x, 1.0,0.0,0.0);
+    	    glScaled	(instanceScale[i].x, 	instanceScale[i].y, 	instanceScale[i].z);
                         
-    	// call the list
-   	    glCallList(mMeshDL);
-   		glPopMatrix();
+	    	// call the list
+   		    glCallList(instanceDisplayList[i]);
+   			glPopMatrix();
+      	}
 	}        
 }  
 
@@ -564,6 +664,9 @@ void puttyMeshInstancer::drawInstancesWireframe( M3dView & view , M3dView::Displ
         
         for (int i=0; i < instanceCount; i++)
    		{
+	    	if (instanceVisibility[i])
+    	    {
+
 	    	glPushMatrix();
     
         	
@@ -575,8 +678,11 @@ void puttyMeshInstancer::drawInstancesWireframe( M3dView & view , M3dView::Displ
 
 
     		// call the list
-   	    	glCallList(mMeshDL);
+
+   		    glCallList(instanceDisplayList[i]);
 	   		glPopMatrix();
+            
+            }
 		}        
     
     }
@@ -585,6 +691,9 @@ void puttyMeshInstancer::drawInstancesWireframe( M3dView & view , M3dView::Displ
     	// draw the wireframe using the pp  colors
 	    for (int i=0; i < instanceCount; i++)
    		{
+           	if (instanceVisibility[i])
+	        {
+
 	    	glPushMatrix();
     		glColor4f (instanceColor[i].x,instanceColor[i].y,instanceColor[i].z, instanceOpacity);
 	        
@@ -597,8 +706,9 @@ void puttyMeshInstancer::drawInstancesWireframe( M3dView & view , M3dView::Displ
 
 
     		// call the list
-   	    	glCallList(mMeshDL);
+   		    glCallList(instanceDisplayList[i]);            
 	   		glPopMatrix();
+            }
 		}        
     }
 }    
@@ -631,8 +741,6 @@ void puttyMeshInstancer::draw( M3dView & view, const MDagPath & path, M3dView::D
     plug.setAttribute(aOpacity);
 	plug.getValue( instanceOpacity );    
 
-
-
 	///////////////////////////////////    
 	// all the data needed for drawing is in place,
     
@@ -640,11 +748,6 @@ void puttyMeshInstancer::draw( M3dView & view, const MDagPath & path, M3dView::D
 
 	// get the current opengl states, for restoring them later
 	// get the current polygon mode
-//	int polygonMode[2];
-//	glGetIntegerv(GL_POLYGON_MODE, polygonMode);    
-    
-//   GLboolean lightingMode;
-//   glGetBooleanv(GL_LIGHTING, &lightingMode);    
 
 	// set up the opengl based on the current style and status
 	glPushAttrib( GL_ALL_ATTRIB_BITS);
@@ -670,11 +773,6 @@ void puttyMeshInstancer::draw( M3dView & view, const MDagPath & path, M3dView::D
 	    drawInstancesWireframe(view,status);
     
 	// restore the opengl state
-// 	glPolygonMode(GL_FRONT, polygonMode[0]);
-//	glPolygonMode(GL_BACK,  polygonMode[1]);
-//    if (!lightingMode)
-//    	glDisable(GL_LIGHTING);
-
 	glPopAttrib();
 
 	view.endGL(); 
